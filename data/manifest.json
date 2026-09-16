@@ -1,0 +1,35 @@
+{
+ "title": "雨水下水道開孔抽樣巡檢覆蓋率",
+ "subtitle": "台南市政府",
+ "networks": {
+  "net-20260915": {
+   "file": "network/net-20260915.json",
+   "label": "管線人孔圖資 2026-09-15",
+   "totalLengthKm": 846.725
+  }
+ },
+ "years": [
+  {
+   "id": "115",
+   "label": "115 年度",
+   "network": "net-20260915",
+   "file": "years/115.json",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "dataThrough": "2026-09-09"
+  }
+ ],
+ "defaultYear": "115",
+ "boundaries": {
+  "file": "boundaries/tainan.json"
+ }
+}

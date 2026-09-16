@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,viewport-fit=cover">
+<meta name="theme-color" content="#0B161F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="雨水下水道人孔開孔抽樣巡檢覆蓋率互動地圖">
+<title>下水道巡檢覆蓋率</title>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<div id="map"></div>
+
+<!-- 載入中 -->
+<div id="boot"><div class="spin"></div><span id="bootTxt">載入圖資…</span></div>
+
+<!-- 頂列 -->
+<div id="top">
+  <button id="btnYear" class="chip"><span id="yearTxt">—</span><svg class="cv" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+  <div id="scope">
+    <div id="scopeName">台南市</div>
+    <div id="scopeSub"></div>
+  </div>
+  <button id="btnFilter" class="chip" aria-label="篩選">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M3.5 6h17M6.5 12h11M10 18h4"/></svg>
+    <span id="fCount" hidden>0</span>
+  </button>
+</div>
+
+<!-- 著色模式 -->
+<div id="modeBar" role="tablist">
+  <button data-m="0" aria-pressed="true">狀態</button>
+  <button data-m="1" aria-pressed="false">次數</button>
+  <button data-m="2" aria-pressed="false">月份</button>
+</div>
+
+<!-- 月份控制（月份模式時顯示） -->
+<div id="timeBar" hidden>
+  <div id="timeHead">
+    <div id="cumSw">
+      <button data-c="0" aria-pressed="false">單月</button>
+      <button data-c="1" aria-pressed="true">累積</button>
+    </div>
+    <div id="timeVal" class="num"></div>
+    <button id="btnPlay" aria-label="播放月份變化">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </div>
+  <div id="months"></div>
+</div>
+
+<!-- 右側工具 + 縮放條 -->
+<div id="tools">
+  <button id="btnLoc" aria-label="定位我的位置">
+    <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="8"/>
+      <path d="M12 1.5v2.4M12 20.1v2.4M22.5 12h-2.4M3.9 12H1.5"/></svg></button>
+  <button id="btnGap" aria-pressed="false" aria-label="只看未巡檢">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20H2.5z"/><path d="M12 10v4.2"/>
+      <circle cx="12" cy="17.2" r=".9" fill="currentColor" stroke="none"/></svg></button>
+  <button id="btnMH" aria-pressed="false" aria-label="顯示人孔">
+    <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="3"/></svg></button>
+</div>
+
+<div id="zoomBar">
+  <button id="zIn" aria-label="放大">＋</button>
+  <div id="zTrack" role="slider" aria-label="縮放層級" tabindex="0"><div id="zFill"></div><div id="zKnob"></div></div>
+  <button id="zOut" aria-label="縮小">−</button>
+</div>
+
+<section id="info" hidden aria-label="行政區資訊">
+  <header id="infoBar">
+    <span id="infoTitle">—</span>
+    <button id="infoMin" aria-label="收合">−</button>
+    <button id="infoClose" aria-label="關閉">✕</button>
+  </header>
+  <div id="infoBody"></div>
+  <div id="infoGrip" aria-label="調整大小"></div>
+</section>
+
+<div id="lgd"></div>
+<div id="toast"></div>
+
+<!-- 底部面板 -->
+<section id="sheet" aria-label="統計">
+  <div id="grab"><i></i></div>
+  <div id="peek">
+    <div class="r1">
+      <div><div id="pct" class="num">—<small>%</small></div><div id="pctLab"></div></div>
+      <div id="lens" class="num"></div>
+    </div>
+    <div class="ruler" id="ruler"></div>
+    <div id="rkeys"></div>
+  </div>
+  <div id="tabs">
+    <button data-t="0" aria-pressed="true">總覽</button>
+    <button data-t="1" aria-pressed="false">行政區</button>
+    <button data-t="2" aria-pressed="false">待補缺口</button>
+  </div>
+  <div class="pane" id="p0"></div>
+  <div class="pane" id="p1" hidden></div>
+  <div class="pane" id="p2" hidden></div>
+</section>
+
+<!-- 篩選面板 -->
+<div id="fMask" hidden></div>
+<section id="fPanel" hidden aria-label="篩選條件">
+  <header>
+    <b>篩選條件</b>
+    <button id="fReset">全部清除</button>
+    <button id="fClose" aria-label="關閉">✕</button>
+  </header>
+  <div class="fBody" id="fBody"></div>
+  <footer><button id="fApply">顯示 <span id="fNum">—</span> 筆管段</button></footer>
+</section>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

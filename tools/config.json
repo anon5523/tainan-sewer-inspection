@@ -1,0 +1,29 @@
+{
+  "title": "雨水下水道開孔抽樣巡檢覆蓋率",
+  "subtitle": "台南市政府",
+  "source_crs": "EPSG:3826",
+  "snap_tolerance_m": 1.0,
+  "simplify_tolerance_m": 0.4,
+  "default_year": "115",
+  "networks": [
+    {
+      "id": "net-20260915",
+      "label": "管線人孔圖資 2026-09-15",
+      "pipes": "source/管線人孔圖資/管線0915.shp",
+      "manholes": "source/管線人孔圖資/人孔0915.shp",
+      "encoding": "utf-8"
+    }
+  ],
+  "years": [
+    {
+      "id": "115",
+      "label": "115 年度",
+      "ad_year": 2026,
+      "network": "net-20260915",
+      "workbook": "source/115年度列管人孔開孔狀態統計_20260915.xlsx",
+      "listed_sheet": 0,
+      "record_sheet": 1
+    }
+  ],
+  "boundaries": "boundaries/tainan.json"
+}
