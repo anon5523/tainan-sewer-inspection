@@ -45,12 +45,24 @@
       <button data-c="0" aria-pressed="false">單月</button>
       <button data-c="1" aria-pressed="true">累積</button>
     </div>
-    <div id="timeVal" class="num"></div>
-    <button id="btnPlay" aria-label="播放月份變化">
+    <div id="granSw">
+      <button data-g="month" aria-pressed="true">月</button>
+      <button data-g="day" aria-pressed="false">日</button>
+    </div>
+    <button id="btnPlay" aria-label="播放時間變化">
       <svg class="ic" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke="none"/></svg>
     </button>
   </div>
+  <div id="timeVal" class="num"></div>
   <div id="months"></div>
+  <div id="dayWrap" hidden>
+    <div id="dayNowWrap"><span id="dayNow" class="num"></span></div>
+    <div id="daySlider">
+      <div id="dayTicks"></div>
+      <input type="range" id="dayRange" min="0" max="0" value="0" aria-label="檢查日期">
+    </div>
+    <div id="dayEnds" class="num"></div>
+  </div>
 </div>
 
 <!-- 右側工具 + 縮放條 -->

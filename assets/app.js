@@ -23,12 +23,13 @@ const isPhone = () => window.matchMedia('(max-width:899px)').matches;
 
 /* ── 狀態 ── */
 const S = {
-  mode: 0, month: null, cum: 1, playing: 0,
+  mode: 0, month: null, cum: 1, playing: 0, gran: 'month', day: 0,
   f: { dists: new Set(), st: new Set(), cnt: new Set(), minLen: 0 },
   onlyGap: false, myLL: null, gapSort: 'len', sortKey: 'gap', snapIdx: 0
 };
 let MF = null, NET = null, YR = null, SEG = [], ALL = null, VIS = [];
 let BND = null, infoPos = null, infoClosed = false;
+let AGG = null, DAYMON = [], ND = 0;
 
 /* ══════════════ 載入 ══════════════ */
 async function grab(path) {
@@ -96,11 +97,21 @@ function buildSeg() {
       st: blocked === 1 ? 2 : blocked === 2 ? 3 : cnt > 0 ? 0 : (YR.listed[i] ? 1 : 4)
     };
     SEG[i].first = SEG[i].m ? 32 - Math.clz32(SEG[i].m & -SEG[i].m) : 0;
+    const dd = (YR.dd && YR.dd[i]) || [];
+    SEG[i].dd = dd;
+    SEG[i].fd = dd.length ? dd[0] : -1;      // 首次巡檢的檢查日索引
   }
   ALL = L.latLngBounds(SEG.flatMap(s => [[s.bb[0], s.bb[2]], [s.bb[1], s.bb[3]]]));
   const ms = YR.meta.months;
   S.month = ms[ms.length - 1];
+  DAYMON = (YR.dates || []).map(d => +d.slice(5, 7));
+  ND = DAYMON.length;
+  S.day = Math.max(0, ND - 1);
 }
+const dLabel = i => {
+  const d = YR.dates[i];
+  return d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : '—';
+};
 
 /* ══════════════ 地圖 ══════════════ */
 const map = L.map('map', {
@@ -151,9 +162,12 @@ function pass(s) {
 function keyOf(s) {
   if (S.mode === 0) return 's' + s.st;
   if (S.mode === 1) return 'c' + Math.min(s.cnt, 3);
+  if (S.gran === 'day') {
+    if (S.cum) return (s.fd >= 0 && s.fd <= S.day) ? 'm' + DAYMON[s.fd] : 'x';
+    return s.dd.indexOf(S.day) >= 0 ? 'm' + DAYMON[S.day] : 'x';
+  }
   const hit = S.cum ? (s.first > 0 && s.first <= S.month) : (s.m >> (S.month - 1) & 1);
-  if (!hit) return 'x';
-  return 'm' + (S.cum ? s.first : S.month);
+  return hit ? 'm' + (S.cum ? s.first : S.month) : 'x';
 }
 function styleOf(k) {
   if (k === 'x') return { color: C.mute, weight: 1.5, opacity: 0.42 };
@@ -169,8 +183,16 @@ function order() {
   return ['x'].concat(MN.map((_, i) => 'm' + (i + 1)));
 }
 
+let TL = null;                     // 時間模式的分層快取
 function render() {
   VIS = SEG.filter(pass);
+  TL = null;                       // 可見集合變了，時間圖層要重建
+  paint();
+}
+/* 只重畫，不重算可見集合與統計（播放動畫時每幀只做這個） */
+function paint() {
+  if (S.mode === 2) return paintTime();
+  TL = null;
   const bk = new Map();
   for (const s of VIS) {
     const k = keyOf(s);
@@ -182,6 +204,61 @@ function render() {
     if (bk.has(k))
       L.polyline(bk.get(k), Object.assign({ renderer: rend, interactive: false,
         lineCap: 'round', lineJoin: 'round' }, styleOf(k))).addTo(gLayer);
+}
+
+/* 時間模式：底圖固定，只更新會變動的那一層。
+   這讓播放動畫每幀只重新投影少量線段，而不是全部 17,446 條。 */
+function buildTL() {
+  gLayer.clearLayers();
+  const base = L.polyline(VIS.map(s => s.ll), { renderer: rend, interactive: false,
+    color: C.mute, weight: 1.5, opacity: 0.42, lineCap: 'round' }).addTo(gLayer);
+  const tops = [];
+  if (S.cum) {
+    const g = Array.from({ length: 13 }, () => []);
+    for (const s of VIS) {
+      const m = S.gran === 'day' ? (s.fd >= 0 ? DAYMON[s.fd] : 0) : s.first;
+      if (m) g[m].push(s);
+    }
+    if (S.gran === 'day') for (let m = 1; m <= 12; m++) g[m].sort((a, b) => a.fd - b.fd);
+    for (let m = 1; m <= 12; m++) {
+      const t = L.polyline([], { renderer: rend, interactive: false,
+        color: C.month[m - 1], weight: 3, opacity: 0.97,
+        lineCap: 'round', lineJoin: 'round' }).addTo(gLayer);
+      t._segs = g[m]; t._n = -1;
+      tops[m] = t;
+    }
+  } else {
+    tops[0] = L.polyline([], { renderer: rend, interactive: false, weight: 3,
+      opacity: 0.97, lineCap: 'round', lineJoin: 'round' }).addTo(gLayer);
+    tops[0]._n = -1;
+  }
+  TL = { base, tops };
+}
+function paintTime() {
+  if (!TL || (S.cum ? !TL.tops[1] : !TL.tops[0])) buildTL();
+  if (S.cum) {
+    const upto = S.gran === 'day' ? (DAYMON[S.day] || 0) : S.month;
+    for (let m = 1; m <= 12; m++) {
+      const t = TL.tops[m], segs = t._segs;
+      let n;
+      if (m < upto) n = segs.length;
+      else if (m > upto) n = 0;
+      else if (S.gran === 'day') {           // 二分搜尋：首次巡檢日 <= 目前日期的筆數
+        let lo = 0, hi = segs.length;
+        while (lo < hi) { const md = (lo + hi) >> 1; if (segs[md].fd <= S.day) lo = md + 1; else hi = md; }
+        n = lo;
+      } else n = segs.length;
+      if (n !== t._n) { t._n = n; t.setLatLngs(segs.slice(0, n).map(x => x.ll)); }
+    }
+  } else {
+    const t = TL.tops[0];
+    const sel = S.gran === 'day'
+      ? VIS.filter(x => x.dd.indexOf(S.day) >= 0)
+      : VIS.filter(x => x.m >> (S.month - 1) & 1);
+    const mo = (S.gran === 'day' ? DAYMON[S.day] : S.month) || 1;
+    t.setStyle({ color: C.month[mo - 1] });
+    t.setLatLngs(sel.map(x => x.ll));
+  }
 }
 
 /* ══════════════ 命中測試（觸控容差大） ══════════════ */
@@ -232,21 +309,36 @@ function popup(s, at) {
 /* ══════════════ 統計 ══════════════ */
 function agg(list) {
   const o = { tot: 0, cov: 0, st: Array(5).fill(0), cnt: Array(4).fill(0),
-              mo: Array(13).fill(0), cumo: Array(13).fill(0), first: Array(13).fill(0) };
+              mo: Array(13).fill(0), cumo: Array(13).fill(0), first: Array(13).fill(0),
+              dOne: new Float64Array(ND), dCum: new Float64Array(ND) };
   for (const s of list) {
     o.tot += s.len; o.st[s.st] += s.len; o.cnt[Math.min(s.cnt, 3)] += s.len;
     if (s.st === 0) o.cov += s.len;
     if (s.first) o.first[s.first] += s.len;
     for (let m = 1; m <= 12; m++) if (s.m >> (m - 1) & 1) o.mo[m] += s.len;
+    if (s.fd >= 0) o.dCum[s.fd] += s.len;           // 先放首次巡檢日，稍後做前綴和
+    for (let k = 0; k < s.dd.length; k++) o.dOne[s.dd[k]] += s.len;
   }
   let run = 0;
   for (let m = 1; m <= 12; m++) { run += o.first[m]; o.cumo[m] = run; }
+  run = 0;
+  for (let i = 0; i < ND; i++) { run += o.dCum[i]; o.dCum[i] = run; }
   return o;
+}
+/* 目前時間點的巡檢長度（依粒度與單期／累積） */
+function timeVal(A) {
+  if (S.gran === 'day') return S.cum ? (A.dCum[S.day] || 0) : (A.dOne[S.day] || 0);
+  return S.cum ? A.cumo[S.month] : A.mo[S.month];
+}
+function timeLabel() {
+  if (S.gran === 'day')
+    return S.cum ? `${dLabel(0)}–${dLabel(S.day)} 累積` : `${dLabel(S.day)}`;
+  return S.cum ? `1–${S.month} 月累積` : `${S.month} 月`;
 }
 
 /* ══════════════ 摘要（peek） ══════════════ */
 function drawPeek() {
-  const A = agg(VIS), tot = A.tot || 1;
+  const A = AGG || (AGG = agg(VIS)), tot = A.tot || 1;
   const fd = S.f.dists;
   $('scopeName').textContent = fd.size === 0 ? '台南市'
     : fd.size === 1 ? NET.dists[[...fd][0]] : `已選 ${fd.size} 個行政區`;
@@ -254,16 +346,25 @@ function drawPeek() {
 
   let rows, pct, lab, right;
   if (S.mode === 2) {
-    const v = S.cum ? A.cumo[S.month] : A.mo[S.month];
+    const v = timeVal(A), isD = S.gran === 'day';
     pct = (v / tot * 100);
-    lab = S.cum ? `1–${S.month} 月累積巡檢` : `${S.month} 月巡檢`;
-    right = `${S.cum ? '累積' : '當月'} <b>${km(v / 1000)}</b> km<br>總管線 <b>${km(A.tot / 1000)}</b> km`;
-    rows = S.cum
-      ? MN.map((n, i) => [n, i + 1 <= S.month ? A.first[i + 1] : 0, C.month[i]])
-          .filter(r => r[1] > 0).concat([['尚未巡檢', tot - A.cumo[S.month], C.mute]])
-      : [[`${S.month} 月`, v, C.month[S.month - 1]],
-         ['其他月份已巡檢', A.cov - v > 0 ? A.cov - v : 0, C.mute],
-         ['未巡檢', tot - A.cov, '#1F2D3A']];
+    lab = timeLabel() + '巡檢';
+    right = `${S.cum ? '累積' : (isD ? '當日' : '當月')} <b>${km(v / 1000)}</b> km<br>總管線 <b>${km(A.tot / 1000)}</b> km`;
+    if (S.cum) {
+      const upto = isD ? DAYMON[S.day] : S.month;
+      rows = MN.map((n, i) => {
+        if (i + 1 > upto) return [n, 0, C.month[i]];
+        if (!isD || i + 1 < upto) return [n, A.first[i + 1], C.month[i]];
+        // 當月只計到選定日期為止
+        let part = 0;
+        for (let k = 0; k <= S.day; k++) if (DAYMON[k] === upto) part += A.dCum[k] - (k ? A.dCum[k - 1] : 0);
+        return [n, part, C.month[i]];
+      }).filter(r => r[1] > 0.5).concat([['尚未巡檢', tot - v, C.mute]]);
+    } else {
+      rows = [[isD ? dLabel(S.day) : `${S.month} 月`, v, C.month[(isD ? DAYMON[S.day] : S.month) - 1]],
+              ['其他時段已巡檢', A.cov - v > 0 ? A.cov - v : 0, C.mute],
+              ['未巡檢', tot - A.cov, '#1F2D3A']];
+    }
   } else if (S.mode === 1) {
     pct = A.cov / tot * 100; lab = '已巡檢比例';
     right = `巡檢 <b>${km((A.cnt[1] + A.cnt[2] + A.cnt[3]) / 1000)}</b> km<br>重複 <b>${km((A.cnt[2] + A.cnt[3]) / 1000)}</b> km`;
@@ -304,16 +405,65 @@ function monthChart(A) {
      <line x1="${pad - 3}" y1="${H - 20}" x2="${W}" y2="${H - 20}" stroke="#2A4355"/>
      <text x="0" y="${H - 17}" style="font-size:8.5px">km</text>${bars}</svg></div>`;
 }
+function dayChart(A) {
+  const W = 300, H = 92, pad = 16, right = W - 2;
+  const mx = Math.max(A.dCum[ND - 1] || 0, ...Array.from(A.dOne), 1);
+  const scale = S.cum ? (A.dCum[ND - 1] || 1) : mx;
+  const X = i => pad + (ND < 2 ? 0 : i / (ND - 1)) * (right - pad);
+  const Y = v => H - 20 - (v / scale) * (H - 30);
+  let body;
+  if (S.cum) {
+    let d = `M${X(0)},${H - 20}`;
+    for (let i = 0; i < ND; i++) d += `L${X(i).toFixed(1)},${Y(A.dCum[i]).toFixed(1)}`;
+    d += `L${X(ND - 1)},${H - 20}Z`;
+    body = `<path d="${d}" fill="url(#gCum)" stroke="none"/>
+      <path d="${d.replace(/^M[\d.]+,[\d.]+/, 'M' + X(0) + ',' + Y(A.dCum[0]))
+        .replace(/L[\d.]+,${H - 20}Z$/, '')}" fill="none" stroke="#4FA8E8" stroke-width="1.6"/>`;
+  } else {
+    body = '';
+    for (let i = 0; i < ND; i++) {
+      if (!A.dOne[i]) continue;
+      const h = Math.max((A.dOne[i] / scale) * (H - 30), 1);
+      body += `<rect x="${(X(i) - 1).toFixed(1)}" y="${(H - 20 - h).toFixed(1)}" width="2"
+        height="${h.toFixed(1)}" rx="1" fill="${C.month[DAYMON[i] - 1]}" opacity=".85"/>`;
+    }
+  }
+  // 月份分隔
+  let seps = '', seen = new Set();
+  for (let i = 0; i < ND; i++) {
+    const m = DAYMON[i];
+    if (seen.has(m)) continue; seen.add(m);
+    seps += `<line x1="${X(i).toFixed(1)}" y1="6" x2="${X(i).toFixed(1)}" y2="${H - 20}"
+      stroke="var(--line)" stroke-dasharray="2 3" opacity=".5"/>
+      <text x="${(X(i) + 2).toFixed(1)}" y="${H - 9}" style="font-size:8.5px">${m}</text>`;
+  }
+  const cx = X(S.day);
+  return `<div class="chartWrap"><svg viewBox="0 0 ${W} ${H}">
+    <defs><linearGradient id="gCum" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4FA8E8" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#4FA8E8" stop-opacity=".06"/></linearGradient></defs>
+    ${seps}${body}
+    <line x1="${cx.toFixed(1)}" y1="2" x2="${cx.toFixed(1)}" y2="${H - 20}"
+      stroke="var(--ok)" stroke-width="1.4"/>
+    <circle cx="${cx.toFixed(1)}" cy="${Y(S.cum ? A.dCum[S.day] : A.dOne[S.day]).toFixed(1)}"
+      r="3" fill="var(--ok)" stroke="var(--ink1)" stroke-width="1.5"/>
+    <line x1="${pad}" y1="${H - 20}" x2="${right}" y2="${H - 20}" stroke="#2A4355"/>
+    <text x="0" y="${H - 17}" style="font-size:8.5px">km</text>
+    <rect class="hit" data-day="1" x="0" y="0" width="${W}" height="${H}"/></svg></div>`;
+}
 function drawP0() {
-  const A = agg(VIS), tot = A.tot || 1;
+  const A = AGG || (AGG = agg(VIS)), tot = A.tot || 1;
   const ms = YR.meta.months;
+  const isD = S.gran === 'day', v = timeVal(A);
   $('p0').innerHTML = `
-  <div class="card"><h3>${S.cum ? '累積' : '各月'}巡檢長度</h3>
-    ${monthChart(A)}
+  <div class="card"><h3>${S.cum ? '累積' : (isD ? '逐日' : '各月')}巡檢長度</h3>
+    ${isD ? dayChart(A) : monthChart(A)}
     <p style="margin-top:9px">${S.cum
-      ? `到 ${S.month} 月為止累積巡檢 ${km(A.cumo[S.month] / 1000)} km，占 ${(A.cumo[S.month] / tot * 100).toFixed(1)}%。累積以「首次巡檢月份」計算，同段重複巡檢不重複累加。`
-      : `${S.month} 月巡檢 ${km(A.mo[S.month] / 1000)} km。各月加總 ${km(ms.reduce((a, m) => a + A.mo[m], 0) / 1000)} km 大於累積值，差額即為同段重複巡檢的部分。`}
-      點長條可切換月份。</p></div>
+      ? `到 ${isD ? YR.dates[S.day] : S.month + ' 月'} 為止累積巡檢 ${km(v / 1000)} km，占 ${(v / tot * 100).toFixed(1)}%。累積以「首次巡檢時間」計算，同段重複巡檢不重複累加。`
+      : (isD
+        ? `${YR.dates[S.day]} 當日巡檢 ${km(v / 1000)} km。全年 ${ND} 個檢查日，單日最多 ${km(Math.max(...Array.from(A.dOne)) / 1000)} km。`
+        : `${S.month} 月巡檢 ${km(A.mo[S.month] / 1000)} km。各月加總 ${km(ms.reduce((a, m) => a + A.mo[m], 0) / 1000)} km 大於累積值，差額即為同段重複巡檢的部分。`)}
+      點圖表可切換${isD ? '日期' : '月份'}。</p></div>
   <div class="card"><h3>巡檢狀態組成</h3>
     ${STN.map((s, i) => `<div class="srow"><b style="background:${C.st[i]}"></b>
       <span class="l">${s}</span><span class="v num">${km(A.st[i] / 1000)}</span>
@@ -329,8 +479,15 @@ function drawP0() {
        該側整段皆計入巡檢；兩端都沒有可開孔人孔的管段，無論如何都巡不到。<br><br>
        圖資中的「虛人孔」為管線轉折點而非真實人孔，計算時已自動穿越合併，不會被誤判為受檢端點。
        所有受檢單元長度總和等於管線圖資總長 ${NET.totalLengthKm.toLocaleString()} km。</p></div>`;
-  $('p0').querySelectorAll('rect.hit').forEach(r =>
-    r.onclick = () => setMonth(+r.dataset.m));
+  $('p0').querySelectorAll('rect.hit').forEach(r => {
+    if (r.dataset.day) {
+      r.onclick = e => {
+        const bb = r.getBoundingClientRect();
+        const f = (e.clientX - bb.left) / bb.width;
+        setDay(Math.round(((f * 300) - 16) / (298 - 16) * (ND - 1)));
+      };
+    } else r.onclick = () => setMonth(+r.dataset.m);
+  });
 }
 
 /* ══════════════ 分頁 1：行政區 ══════════════ */
@@ -412,8 +569,14 @@ function drawP2() {
   });
 }
 
-const refresh = () => { render(); drawBoundary(); drawMonths(); drawPeek();
-  drawP0(); drawP1(); drawP2(); legend(); drawInfo(); };
+const refresh = () => {
+  render();                       // 先算出 VIS
+  AGG = agg(VIS);
+  drawBoundary(); drawTime(); drawPeek(); drawP0(); drawP1(); drawP2();
+  legend(); drawInfo();
+};
+/* 播放時只更新必要部分，維持流暢 */
+const refreshLight = () => { paint(); drawTimeVal(); drawPeek(); legendRamp(); };
 
 /* ══════════════ 行政區聚焦 ══════════════ */
 function pickDist(i) {
@@ -441,7 +604,7 @@ function zoomToSelection() {
 
 /* ══════════════ 模式與月份 ══════════════ */
 function setMode(m) {
-  S.mode = m;
+  S.mode = m; TL = null;
   document.querySelectorAll('#modeBar button').forEach(b =>
     b.setAttribute('aria-pressed', +b.dataset.m === m));
   $('timeBar').hidden = m !== 2;
@@ -449,39 +612,110 @@ function setMode(m) {
   refresh();
 }
 function setMonth(m) {
-  S.month = m;
+  S.month = m; S.gran = 'month';
   if (S.mode !== 2) { setMode(2); return; }
   refresh();
 }
-function drawMonths() {
-  const ms = new Set(YR.meta.months);
-  const A = agg(VIS);
-  const mx = Math.max(...YR.meta.months.map(m => A.mo[m]), 1);
-  $('months').innerHTML = MN.map((n, i) => {
-    const m = i + 1, has = ms.has(m);
-    const inr = S.cum ? m <= S.month : m === S.month;
-    return `<button data-m="${m}" ${has ? '' : 'disabled'} class="${inr ? 'inrange' : ''}"
-      aria-pressed="${m === S.month}">${m}
-      <i style="background:${has && inr ? C.month[i] : '#2E3D4A'};
-        opacity:${has ? Math.max(0.35, A.mo[m] / mx) : 0.2}"></i></button>`;
-  }).join('');
-  $('months').querySelectorAll('button').forEach(b =>
-    b.onclick = () => { if (!b.disabled) setMonth(+b.dataset.m); });
-  const A2 = agg(VIS), v = S.cum ? A2.cumo[S.month] : A2.mo[S.month];
-  $('timeVal').innerHTML = `${S.cum ? `1–${S.month} 月累積` : `${S.month} 月`} <b>${km(v / 1000)}</b> km`;
+function setDay(i) {
+  S.day = Math.max(0, Math.min(ND - 1, i));
+  S.month = DAYMON[S.day] || S.month;
+  if (S.mode !== 2) { setMode(2); return; }
+  refresh();
+}
+function setGran(g) {
+  S.gran = g; TL = null;
+  document.querySelectorAll('#granSw button').forEach(b =>
+    b.setAttribute('aria-pressed', b.dataset.g === g));
+  document.querySelectorAll('#cumSw button').forEach(b =>
+    b.textContent = +b.dataset.c ? '累積' : (g === 'day' ? '單日' : '單月'));
+  // 兩種粒度互相對齊：切到日就跳到該月最後一個檢查日，切到月就取當日所屬月
+  if (g === 'day') {
+    let last = -1;
+    for (let i = 0; i < ND; i++) if (DAYMON[i] <= S.month) last = i;
+    if (last >= 0) S.day = last;
+  } else S.month = DAYMON[S.day] || S.month;
+  stopPlay(); refresh();
+}
+/* 只更新時間列上的數值，播放時用 */
+function drawTimeVal() {
+  const A = AGG || (AGG = agg(VIS));
+  $('timeVal').innerHTML = S.gran === 'day'
+    ? `${S.cum ? `自 ${dLabel(0)} 累積` : '當日巡檢'} <b>${km(timeVal(A) / 1000)}</b> km`
+    : `${timeLabel()} <b>${km(timeVal(A) / 1000)}</b> km`;
+  if (S.gran === 'day') {
+    $('dayRange').value = S.day;
+    $('dayNow').textContent = YR.dates[S.day] || '';
+  } else {
+    document.querySelectorAll('#months button').forEach(b => {
+      const m = +b.dataset.m;
+      b.setAttribute('aria-pressed', m === S.month);
+      b.classList.toggle('inrange', S.cum ? m <= S.month : m === S.month);
+    });
+  }
+}
+function drawTime() {
+  const A = AGG || (AGG = agg(VIS));
+  const dayMode = S.gran === 'day';
+  $('months').hidden = dayMode;
+  $('dayWrap').hidden = !dayMode;
+
+  if (dayMode) {
+    const r = $('dayRange');
+    r.min = 0; r.max = Math.max(0, ND - 1); r.value = S.day;
+    $('dayNow').textContent = YR.dates[S.day] || '';
+    $('dayEnds').innerHTML = `<span>${YR.dates[0] || ''}</span><span>${YR.dates[ND - 1] || ''}</span>`;
+    // 月份刻度
+    let ticks = '', seen = new Set();
+    for (let i = 0; i < ND; i++) {
+      const m = DAYMON[i];
+      if (seen.has(m)) continue;
+      seen.add(m);
+      ticks += `<i style="left:${i / Math.max(1, ND - 1) * 100}%;background:${C.month[m - 1]}"
+        title="${m} 月"></i>`;
+    }
+    $('dayTicks').innerHTML = ticks;
+  } else {
+    const ms = new Set(YR.meta.months);
+    const mx = Math.max(...YR.meta.months.map(m => A.mo[m]), 1);
+    $('months').innerHTML = MN.map((n, i) => {
+      const m = i + 1, has = ms.has(m), inr = S.cum ? m <= S.month : m === S.month;
+      return `<button data-m="${m}" ${has ? '' : 'disabled'} class="${inr ? 'inrange' : ''}"
+        aria-pressed="${m === S.month}">${m}
+        <i style="background:${has && inr ? C.month[i] : '#2E3D4A'};
+          opacity:${has ? Math.max(0.35, A.mo[m] / mx) : 0.2}"></i></button>`;
+    }).join('');
+    $('months').querySelectorAll('button').forEach(b =>
+      b.onclick = () => { if (!b.disabled) setMonth(+b.dataset.m); });
+  }
+  drawTimeVal();
 }
 let playT = null;
-function stopPlay() { clearInterval(playT); playT = null; S.playing = 0; $('btnPlay').setAttribute('aria-pressed', false); }
+function stopPlay() {
+  clearInterval(playT); playT = null; S.playing = 0;
+  $('btnPlay').setAttribute('aria-pressed', false);
+}
 function play() {
   if (playT) return stopPlay();
   S.playing = 1; $('btnPlay').setAttribute('aria-pressed', true);
-  const ms = YR.meta.months;
-  let k = S.cum ? 0 : ms.indexOf(S.month);
-  playT = setInterval(() => {
-    k = (k + 1) % ms.length;
-    S.month = ms[k]; render(); drawMonths(); drawPeek(); drawP0(); legend();
-    if (k === ms.length - 1) setTimeout(stopPlay, 900);
-  }, 750);
+  if (S.gran === 'day') {
+    // 逐日播放：累積模式從頭掃過整年，單日模式逐日跳
+    let k = S.cum ? 0 : S.day;
+    if (S.cum) { S.day = 0; }
+    playT = setInterval(() => {
+      k++;
+      if (k >= ND) { S.day = ND - 1; refreshLight(); return stopPlay(); }
+      S.day = k; S.month = DAYMON[k];
+      refreshLight();
+    }, 110);
+  } else {
+    const ms = YR.meta.months;
+    let k = S.cum ? -1 : ms.indexOf(S.month);
+    playT = setInterval(() => {
+      k++;
+      if (k >= ms.length) { S.month = ms[ms.length - 1]; refreshLight(); return stopPlay(); }
+      S.month = ms[k]; refreshLight();
+    }, 760);
+  }
 }
 
 /* ══════════════ 篩選面板 ══════════════ */
@@ -584,6 +818,14 @@ function toast(m) {
 }
 
 /* ══════════════ 圖例 ══════════════ */
+function legendRamp() {
+  if (S.mode !== 2 || !S.cum) return;
+  const el = $('lgd').querySelector('.ramp');
+  if (!el) return legend();
+  const upto = S.gran === 'day' ? DAYMON[S.day] : S.month;
+  const want = YR.meta.months.filter(m => m <= upto);
+  if (el.children.length !== want.length) legend();
+}
 function legend() {
   const el = $('lgd');
   let title, body;
@@ -595,13 +837,14 @@ function legend() {
     body = CNTN.map((s, i) =>
       `<div><i style="background:${C.cnt[i]};height:${i ? 1.9 + i * 1.3 : 1.8}px"></i>${s}</div>`).join('');
   } else {
-    title = S.cum ? `首次巡檢月份（1–${S.month} 月）` : `${S.month} 月巡檢`;
+    title = S.cum ? `首次巡檢月份（${timeLabel().replace('累積', '')}）` : `${timeLabel()}巡檢`;
     body = (S.cum
-      ? `<div class="ramp">${YR.meta.months.filter(m => m <= S.month).map(m =>
-          `<i style="background:${C.month[m - 1]}" title="${m}月"></i>`).join('')}</div>
-         <div class="note">左 ${YR.meta.months[0]} 月 → 右 ${S.month} 月</div>`
-      : `<div><i style="background:${C.month[S.month - 1]}"></i>${S.month} 月巡檢</div>`)
-      + `<div><i style="background:${C.mute}"></i>${S.cum ? '尚未巡檢' : '非本月'}</div>`;
+      ? (() => { const upto = S.gran === 'day' ? DAYMON[S.day] : S.month;
+           return `<div class="ramp">${YR.meta.months.filter(m => m <= upto).map(m =>
+             `<i style="background:${C.month[m - 1]}" title="${m}月"></i>`).join('')}</div>
+             <div class="note">左 ${YR.meta.months[0]} 月 → 右 ${upto} 月</div>`; })()
+      : `<div><i style="background:${C.month[(S.gran === 'day' ? DAYMON[S.day] : S.month) - 1]}"></i>${timeLabel()}巡檢</div>`)
+      + `<div><i style="background:${C.mute}"></i>${S.cum ? '尚未巡檢' : (S.gran === 'day' ? '非當日' : '非本月')}</div>`;
   }
   if (mhLayer._map)
     body += '<h4 style="margin-top:7px">人孔</h4>' + ['已開孔', '未開孔', '未列管'].map((s, i) =>
@@ -635,18 +878,20 @@ function drawInfo() {
   if (!f.size || infoClosed) { el.hidden = true; return; }
   el.hidden = false; placeInfo();
 
-  const A = agg(VIS), tot = A.tot || 1;
+  const A = AGG || (AGG = agg(VIS)), tot = A.tot || 1;
   $('infoTitle').textContent = f.size === 1 ? NET.dists[[...f][0]] : `已選 ${f.size} 個行政區`;
 
   let big, lab, rows, hint;
   if (S.mode === 2) {
-    const v = S.cum ? A.cumo[S.month] : A.mo[S.month];
-    big = (v / tot * 100).toFixed(1); lab = S.cum ? `1–${S.month} 月累積巡檢` : `${S.month} 月巡檢`;
+    const v = timeVal(A), isD = S.gran === 'day';
+    big = (v / tot * 100).toFixed(1); lab = timeLabel() + '巡檢';
     rows = S.cum
-      ? MN.map((n, i) => [n, i + 1 <= S.month ? A.first[i + 1] : 0, C.month[i]])
-          .filter(r => r[1] > 0.5).concat([['尚未巡檢', tot - A.cumo[S.month], C.mute]])
-      : YR.meta.months.map(m => [MN[m - 1], A.mo[m], C.month[m - 1]]).filter(r => r[1] > 0.5);
-    hint = S.cum ? '累積以首次巡檢月份計算，重複巡檢不重複累加。' : '各月加總大於累積值，差額為重複巡檢。';
+      ? MN.map((n, i) => [n, i + 1 <= (isD ? DAYMON[S.day] : S.month) ? A.first[i + 1] : 0, C.month[i]])
+          .filter(r => r[1] > 0.5).concat([['尚未巡檢', tot - v, C.mute]])
+      : (isD ? [[dLabel(S.day), v, C.month[DAYMON[S.day] - 1]]]
+             : YR.meta.months.map(m => [MN[m - 1], A.mo[m], C.month[m - 1]]).filter(r => r[1] > 0.5));
+    hint = S.cum ? '累積以首次巡檢時間計算，重複巡檢不重複累加。'
+                 : (isD ? '只顯示當日巡檢的管段。' : '各月加總大於累積值，差額為重複巡檢。');
   } else if (S.mode === 1) {
     big = (A.cov / tot * 100).toFixed(1); lab = '已巡檢比例';
     rows = CNTN.map((n, i) => [n, A.cnt[i], C.cnt[i]]);
@@ -729,11 +974,18 @@ function initOnce() {
   document.querySelectorAll('#modeBar button').forEach(b =>
     b.onclick = () => setMode(+b.dataset.m));
   document.querySelectorAll('#cumSw button').forEach(b => b.onclick = () => {
-    S.cum = +b.dataset.c;
+    S.cum = +b.dataset.c; TL = null;
     document.querySelectorAll('#cumSw button').forEach(x =>
       x.setAttribute('aria-pressed', +x.dataset.c === S.cum));
-    refresh();
+    stopPlay(); refresh();
   });
+  document.querySelectorAll('#granSw button').forEach(b =>
+    b.onclick = () => setGran(b.dataset.g));
+  $('dayRange').addEventListener('input', () => {
+    stopPlay(); S.day = +$('dayRange').value; S.month = DAYMON[S.day] || S.month;
+    paint(); drawTimeVal(); drawPeek(); legendRamp(); drawInfo();
+  });
+  $('dayRange').addEventListener('change', () => { drawP0(); drawP2(); });
   $('btnPlay').onclick = play;
   document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
     document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', x === b));

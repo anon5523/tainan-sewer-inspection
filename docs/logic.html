@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>下水道開孔抽樣巡檢覆蓋率系統｜邏輯說明</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF7; --card:#FFFFFF; --ink:#1B2B36; --ink2:#42596B; --ink3:#7A90A0;
+  --rule:#DCE3E8; --rule2:#EDF1F4;
+  --ok:#0E9C7A; --okbg:#E6F6F1;
+  --bad:#D94A38; --badbg:#FCEDEA;
+  --str:#5B7391; --strbg:#EDF1F6;
+  --dat:#B8860B; --datbg:#FBF3DE;
+  --blue:#2A5D8C; --acc:#1F4E73;
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --paper:#0F1A22; --card:#16242E; --ink:#E4EDF3; --ink2:#A7BECD; --ink3:#72899A;
+    --rule:#2A3E4C; --rule2:#1E303C;
+    --ok:#38D6A8; --okbg:#10302A;
+    --bad:#FF7A68; --badbg:#3A1F1C;
+    --str:#94AECB; --strbg:#1E2E3D;
+    --dat:#E8C05A; --datbg:#33290F;
+    --blue:#7FB2DD; --acc:#9CC6E8;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1A22; --card:#16242E; --ink:#E4EDF3; --ink2:#A7BECD; --ink3:#72899A;
+  --rule:#2A3E4C; --rule2:#1E303C;
+  --ok:#38D6A8; --okbg:#10302A; --bad:#FF7A68; --badbg:#3A1F1C;
+  --str:#94AECB; --strbg:#1E2E3D; --dat:#E8C05A; --datbg:#33290F;
+  --blue:#7FB2DD; --acc:#9CC6E8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);
+  font-family:"Noto Sans TC","Noto Sans CJK TC","PingFang TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif;
+  font-weight:400;line-height:1.95;-webkit-font-smoothing:antialiased;
+  padding:0 20px 80px}
+.wrap{max-width:772px;margin:0 auto}
+.num{font-variant-numeric:tabular-nums lining-nums}
+
+/* 標題區 */
+header{padding:64px 0 34px;border-bottom:2px solid var(--ink);margin-bottom:8px}
+.kicker{font-size:12.5px;color:var(--ink3);letter-spacing:.06em;margin-bottom:12px}
+h1{font-family:"Noto Serif TC","Noto Serif CJK TC","Songti TC",serif;font-weight:700;font-size:clamp(25px,5.4vw,35px);
+  line-height:1.4;letter-spacing:-.01em}
+.sub{margin-top:14px;font-size:15px;color:var(--ink2);line-height:1.85;max-width:60ch}
+.meta{margin-top:20px;font-size:12.5px;color:var(--ink3)}
+
+/* 目錄 */
+nav{margin:36px 0 12px;padding:20px 22px;background:var(--card);
+  border:1px solid var(--rule);border-radius:4px}
+nav h2{font-size:12.5px;color:var(--ink3);font-weight:500;margin-bottom:12px;
+  font-family:"Noto Sans TC",sans-serif}
+nav ol{list-style:none;counter-reset:n}
+nav li{counter-increment:n;padding:4px 0;font-size:14.5px}
+nav li::before{content:counter(n) "．";color:var(--ink3);margin-right:7px}
+nav a{color:var(--ink);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover{border-bottom-color:var(--ink3)}
+
+/* 章節 */
+section{padding-top:52px}
+h2{font-family:"Noto Serif TC","Noto Serif CJK TC","Songti TC",serif;font-size:clamp(20px,3.8vw,25px);font-weight:700;
+  line-height:1.5;margin-bottom:6px;scroll-margin-top:20px}
+h2 .no{color:var(--ink3);font-weight:500;margin-right:11px;font-size:.78em}
+.lead{color:var(--ink2);font-size:14.5px;margin-bottom:22px;padding-bottom:18px;
+  border-bottom:1px solid var(--rule)}
+h3{font-size:16.5px;font-weight:700;margin:32px 0 10px;line-height:1.6}
+h4{font-size:14.5px;font-weight:700;margin:22px 0 6px;color:var(--ink)}
+p{margin:14px 0;font-size:15px}
+strong{font-weight:700}
+em{font-style:normal;background:var(--datbg);padding:1px 5px;border-radius:3px;
+  font-weight:500;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+code{font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  font-size:.87em;background:var(--rule2);padding:2px 6px;border-radius:3px;
+  border:1px solid var(--rule)}
+ul,ol{margin:14px 0 14px 4px;padding-left:20px}
+li{margin:7px 0;font-size:15px;padding-left:3px}
+li::marker{color:var(--ink3)}
+
+/* 圖 */
+figure{margin:26px 0;padding:22px 20px 16px;background:var(--card);
+  border:1px solid var(--rule);border-radius:4px;overflow-x:auto}
+figure svg{display:block;width:100%;height:auto;min-width:440px}
+figcaption{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule2);
+  font-size:12.5px;color:var(--ink3);line-height:1.75}
+figcaption b{color:var(--ink2);font-weight:500}
+
+/* 重點框 */
+.box{margin:24px 0;padding:18px 20px;border-radius:4px;border:1px solid var(--rule);
+  background:var(--card);border-left:3px solid var(--blue)}
+.box.warn{border-left-color:var(--bad);background:var(--badbg);border-color:transparent}
+.box.key{border-left-color:var(--ok);background:var(--okbg);border-color:transparent}
+.box h4{margin:0 0 8px;font-size:14.5px}
+.box p{margin:8px 0;font-size:14.5px}
+.box p:last-child{margin-bottom:0}
+
+/* 表 */
+.tw{overflow-x:auto;margin:22px 0;border:1px solid var(--rule);border-radius:4px;
+  background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:480px;font-size:14px}
+th{background:var(--rule2);font-weight:700;text-align:left;padding:11px 14px;
+  border-bottom:1px solid var(--rule);white-space:nowrap;font-size:13px}
+td{padding:11px 14px;border-bottom:1px solid var(--rule2);vertical-align:top;line-height:1.75}
+tr:last-child td{border-bottom:none}
+td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* 步驟 */
+.steps{counter-reset:s;list-style:none;padding:0;margin:24px 0}
+.steps li{counter-increment:s;position:relative;padding:0 0 20px 46px;margin:0;
+  border-left:1px solid var(--rule);margin-left:13px}
+.steps li:last-child{border-left-color:transparent;padding-bottom:0}
+.steps li::before{content:counter(s);position:absolute;left:-13px;top:-2px;
+  width:26px;height:26px;border-radius:50%;background:var(--acc);color:var(--paper);
+  display:grid;place-items:center;font-size:12.5px;font-weight:700;
+  font-variant-numeric:tabular-nums}
+.steps b{display:block;font-size:15px;margin-bottom:3px}
+.steps span{font-size:14px;color:var(--ink2);line-height:1.8}
+
+/* 色票 */
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;
+  padding:2px 9px 2px 7px;border-radius:12px;font-weight:500;white-space:nowrap}
+.chip i{width:9px;height:9px;border-radius:2px;flex:none}
+.c-ok{background:var(--okbg);color:var(--ok)}
+.c-bad{background:var(--badbg);color:var(--bad)}
+.c-str{background:var(--strbg);color:var(--str)}
+.c-dat{background:var(--datbg);color:var(--dat)}
+
+footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
+  font-size:13px;color:var(--ink3);line-height:1.9}
+
+@media print{
+  body{background:#fff;padding:0;font-size:10.5pt;line-height:1.85}
+  .wrap{max-width:none}
+  header{padding:0 0 20px}
+  nav{break-after:page;background:none;border-color:#CBD5DC}
+  section{padding-top:26px;break-inside:auto}
+  h2{break-after:avoid;break-inside:avoid}
+  .lead,h3,h4{break-after:avoid}
+  figure,.box,.tw,.steps li{break-inside:avoid}
+  figure{border-color:#CBD5DC}
+  p,li{orphans:3;widows:3}
+  a{color:inherit;text-decoration:none}
+}
+@media(max-width:560px){
+  body{padding:0 15px 60px;line-height:1.85}
+  header{padding-top:44px}
+  figure{padding:16px 12px 12px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">技術邏輯說明書｜供資訊系統廠商參考</div>
+  <h1>雨水下水道<br>開孔抽樣巡檢覆蓋率系統</h1>
+  <p class="sub">這份文件說明這套系統「怎麼把人孔開孔紀錄換算成管線巡檢長度」，
+     以及為什麼中間有幾個步驟不能省。全文盡量用白話，
+     需要精確定義的地方才給規則與數字。</p>
+  <div class="meta">資料範圍：台南市 33 個行政區・115 年度・管線圖資基準日 2026-09-15</div>
+</header>
+
+<nav>
+  <h2>內容</h2>
+  <ol>
+    <li><a href="#s1">這套系統在解決什麼問題</a></li>
+    <li><a href="#s2">核心規則：一座人孔代表多長的管線</a></li>
+    <li><a href="#s3">最容易做錯的地方：虛人孔</a></li>
+    <li><a href="#s4">完整計算流程</a></li>
+    <li><a href="#s5">未巡檢要拆成兩種，不能混為一談</a></li>
+    <li><a href="#s6">月份與累積怎麼算</a></li>
+    <li><a href="#s7">資料怎麼存：為什麼這樣設計</a></li>
+    <li><a href="#s8">網頁端的運作方式</a></li>
+    <li><a href="#s9">怎麼驗證算得對不對</a></li>
+    <li><a href="#s10">接手前必讀：十個容易誤解的點</a></li>
+  </ol>
+</nav>
+
+<!-- ══════════════ 1 ══════════════ -->
+<section id="s1">
+  <h2><span class="no">01</span>這套系統在解決什麼問題</h2>
+  <p class="lead">把「開了幾座人孔」這種點狀成果，換算成「巡檢了多少公里管線」這種線狀績效。</p>
+
+  <p>下水道埋在地下，沒辦法整條挖開檢查。實務上的做法是<strong>開人孔抽樣</strong>：
+     打開人孔蓋往裡面看，用這一點的狀況代表附近一段管線的狀況。</p>
+
+  <p>問題來了 —— 管理單位真正要回答的是「今年巡檢了多少公里？哪裡還沒巡？」
+     但手上的原始資料是<em>8,733 座列管人孔</em>和<em>9,169 筆開孔紀錄</em>，
+     兩者都是「點」。這套系統做的就是這個轉換：</p>
+
+  <figure>
+    <svg viewBox="0 0 640 118" role="img" aria-label="從點狀開孔紀錄轉換為線狀巡檢長度">
+      <g font-family="Noto Sans TC, Noto Sans CJK TC, sans-serif">
+        <rect x="8" y="24" width="176" height="66" rx="5" fill="var(--rule2)" stroke="var(--rule)"/>
+        <text x="96" y="50" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink)">點狀資料</text>
+        <text x="96" y="71" text-anchor="middle" font-size="11.5" fill="var(--ink2)">9,169 筆開孔紀錄</text>
+        <circle cx="46" cy="83" r="3" fill="var(--ok)"/><circle cx="64" cy="83" r="3" fill="var(--ok)"/>
+        <circle cx="82" cy="83" r="3" fill="var(--bad)"/><circle cx="100" cy="83" r="3" fill="var(--ok)"/>
+        <circle cx="118" cy="83" r="3" fill="var(--ok)"/><circle cx="136" cy="83" r="3" fill="var(--bad)"/>
+
+        <rect x="232" y="24" width="176" height="66" rx="5" fill="var(--card)" stroke="var(--blue)" stroke-width="1.5"/>
+        <text x="320" y="50" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--blue)">本系統</text>
+        <text x="320" y="70" text-anchor="middle" font-size="11.5" fill="var(--ink2)">管網拓樸 + 半段分配</text>
+        <text x="320" y="85" text-anchor="middle" font-size="11.5" fill="var(--ink2)">17,446 個受檢單元</text>
+
+        <rect x="456" y="24" width="176" height="66" rx="5" fill="var(--okbg)" stroke="var(--ok)"/>
+        <text x="544" y="50" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ok)">線狀績效</text>
+        <text x="544" y="70" text-anchor="middle" font-size="11.5" fill="var(--ink2)">已巡檢 639.45 km</text>
+        <text x="544" y="85" text-anchor="middle" font-size="11.5" fill="var(--ink2)">未巡檢 207.27 km</text>
+
+        <path d="M190 57h34" stroke="var(--ink3)" stroke-width="1.5" marker-end="url(#ar)"/>
+        <path d="M414 57h34" stroke="var(--ink3)" stroke-width="1.5" marker-end="url(#ar)"/>
+        <defs><marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0 0l7 3.5L0 7z" fill="var(--ink3)"/></marker></defs>
+      </g>
+    </svg>
+    <figcaption><b>圖 1</b>　系統的本質是一個換算器：輸入是人孔的開孔紀錄，
+      輸出是每一小段管線「有沒有被巡到、被巡幾次、哪個月巡的」。</figcaption>
+  </figure>
+</section>
+
+<!-- ══════════════ 2 ══════════════ -->
+<section id="s2">
+  <h2><span class="no">02</span>核心規則：一座人孔代表多長的管線</h2>
+  <p class="lead">開一座孔，往上游和下游各算一半的距離。這是整套系統唯一的業務規則。</p>
+
+  <p>想像四座人孔 A、B、C、D 串在一條管線上。如果今天只開了 B 這座孔，
+     那 B 代表的巡檢範圍是「A 到 B 的後半段」加上「B 到 C 的前半段」。
+     為什麼是一半？因為 A 到 B 之間的前半段，本來就該由 A 負責；
+     這樣每一段管線都有明確的歸屬，不會重複算也不會漏算。</p>
+
+  <figure>
+    <svg viewBox="0 0 640 152" role="img" aria-label="開孔涵蓋上下游各一半距離">
+      <g font-family="Noto Sans TC, Noto Sans CJK TC, sans-serif">
+        <line x1="60" y1="60" x2="580" y2="60" stroke="var(--rule)" stroke-width="7" stroke-linecap="round"/>
+        <line x1="190" y1="60" x2="450" y2="60" stroke="var(--ok)" stroke-width="7" stroke-linecap="round"/>
+        <g fill="var(--ink3)">
+          <circle cx="60" cy="60" r="8" fill="var(--card)" stroke="var(--ink3)" stroke-width="2"/>
+          <circle cx="320" cy="60" r="11" fill="var(--ok)" stroke="var(--card)" stroke-width="2.5"/>
+          <circle cx="580" cy="60" r="8" fill="var(--card)" stroke="var(--ink3)" stroke-width="2"/>
+          <circle cx="190" cy="60" r="4" fill="var(--ink3)"/><circle cx="450" cy="60" r="4" fill="var(--ink3)"/>
+        </g>
+        <g font-size="12.5" fill="var(--ink)" text-anchor="middle" font-weight="700">
+          <text x="60" y="38">A</text><text x="320" y="34">B（今天開這座）</text><text x="580" y="38">C</text>
+        </g>
+        <g font-size="11" fill="var(--ink3)" text-anchor="middle">
+          <text x="125" y="88">A 負責</text><text x="125" y="102">（今天沒開）</text>
+          <text x="255" y="88">B 負責</text><text x="385" y="88">B 負責</text>
+          <text x="515" y="88">C 負責</text><text x="515" y="102">（今天沒開）</text>
+        </g>
+        <path d="M190 112h130" stroke="var(--ok)" stroke-width="1.2" marker-start="url(#a2)" marker-end="url(#a2)"/>
+        <path d="M320 112h130" stroke="var(--ok)" stroke-width="1.2" marker-start="url(#a2)" marker-end="url(#a2)"/>
+        <text x="320" y="136" text-anchor="middle" font-size="12" fill="var(--ok)" font-weight="700">
+          B 這一次開孔＝巡檢了這段長度</text>
+        <line x1="190" y1="70" x2="190" y2="106" stroke="var(--rule)" stroke-dasharray="3 3"/>
+        <line x1="450" y1="70" x2="450" y2="106" stroke="var(--rule)" stroke-dasharray="3 3"/>
+        <defs><marker id="a2" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0 0l6 3L0 6z" fill="var(--ok)"/></marker></defs>
+      </g>
+    </svg>
+    <figcaption><b>圖 2</b>　開 B 孔，涵蓋 A–B 的一半加上 B–C 的一半。
+      A 與 C 各自負責的另外一半，要等 A、C 真的被開了才算巡到。</figcaption>
+  </figure>
+
+  <h3>三種情況，只有三種</h3>
+  <p>把上面的規則套到每一段管線，會出現三種狀況。系統對每一段管線只做這個判斷：</p>
+
+  <figure>
+    <svg viewBox="0 0 640 268" role="img" aria-label="三種覆蓋情況">
+      <g font-family="Noto Sans TC, Noto Sans CJK TC, sans-serif">
+        <!-- 情況一 -->
+        <text x="8" y="22" font-size="13" font-weight="700" fill="var(--ink)">情況一　兩端都有人孔</text>
+        <line x1="120" y1="52" x2="520" y2="52" stroke="var(--rule)" stroke-width="7" stroke-linecap="round"/>
+        <line x1="120" y1="52" x2="320" y2="52" stroke="var(--ok)" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="120" cy="52" r="9" fill="var(--ok)" stroke="var(--card)" stroke-width="2"/>
+        <circle cx="520" cy="52" r="9" fill="var(--bad)" stroke="var(--card)" stroke-width="2"/>
+        <text x="120" y="34" text-anchor="middle" font-size="11" fill="var(--ok)">已開</text>
+        <text x="520" y="34" text-anchor="middle" font-size="11" fill="var(--bad)">未開</text>
+        <text x="220" y="72" text-anchor="middle" font-size="11" fill="var(--ok)">前半：已巡檢</text>
+        <text x="420" y="72" text-anchor="middle" font-size="11" fill="var(--ink3)">後半：未巡檢</text>
+        <line x1="320" y1="42" x2="320" y2="62" stroke="var(--card)" stroke-width="2.5"/>
+
+        <!-- 情況二 -->
+        <text x="8" y="120" font-size="13" font-weight="700" fill="var(--ink)">情況二　只有一端有人孔</text>
+        <line x1="120" y1="150" x2="520" y2="150" stroke="var(--ok)" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="120" cy="150" r="9" fill="var(--ok)" stroke="var(--card)" stroke-width="2"/>
+        <path d="M514 142v16" stroke="var(--ink3)" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="120" y="132" text-anchor="middle" font-size="11" fill="var(--ok)">已開</text>
+        <text x="540" y="132" text-anchor="middle" font-size="11" fill="var(--ink3)">末端</text>
+        <text x="320" y="170" text-anchor="middle" font-size="11" fill="var(--ok)">整段都算已巡檢（沒有別人可以分擔）</text>
+
+        <!-- 情況三 -->
+        <text x="8" y="218" font-size="13" font-weight="700" fill="var(--ink)">情況三　兩端都沒有人孔</text>
+        <line x1="120" y1="248" x2="520" y2="248" stroke="var(--str)" stroke-width="7"
+              stroke-linecap="round" stroke-dasharray="1 11"/>
+        <path d="M126 240v16M514 240v16" stroke="var(--ink3)" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="320" y="268" text-anchor="middle" font-size="11" fill="var(--str)">
+          永遠巡不到，除非增設人孔</text>
+      </g>
+    </svg>
+    <figcaption><b>圖 3</b>　每一段管線一定落在這三種情況之一。
+      第三種很重要，它不是「今年沒去巡」，而是「用這個方法根本巡不到」，
+      後面第 5 節會說明為什麼一定要分開統計。</figcaption>
+  </figure>
+
+  <div class="box key">
+    <h4>給廠商的一句話規格</h4>
+    <p>把管網當成一張圖（node = 人孔，edge = 管線）。
+       每條 edge 從中點切成兩半，<strong>每一半的巡檢狀態，由它靠近的那個 node 決定</strong>。
+       如果某一端不是真的人孔，那整條 edge 都歸另一端管。</p>
+  </div>
+</section>
+
+<!-- ══════════════ 3 ══════════════ -->
+<section id="s3">
+  <h2><span class="no">03</span>最容易做錯的地方：虛人孔</h2>
+  <p class="lead">圖資裡有 6,101 個節點長得像人孔，但它們不是人孔。沒處理這件事，覆蓋率會嚴重高估。</p>
+
+  <p>台南市的人孔圖層有 14,833 個節點，但只有 8,732 個是真人孔（正常人孔、覆蓋人孔）。
+     剩下的 <em>6,101 個是「虛人孔」</em> —— 它們是管線的<strong>轉折點</strong>，
+     用來記錄管線在哪裡轉彎。地面上根本沒有孔蓋，工務人員不可能打開它。</p>
+
+  <p>如果直接把虛人孔當成受檢端點，會發生什麼事？
+     一段本來應該由遠處真人孔負責的長管線，會被轉折點切成好幾小段，
+     每小段都變成「一端沒人孔 → 整段算已巡檢」，覆蓋率就被灌水了。</p>
+
+  <figure>
+    <svg viewBox="0 0 640 240" role="img" aria-label="虛人孔穿越合併前後對照">
+      <g font-family="Noto Sans TC, Noto Sans CJK TC, sans-serif">
+        <!-- 錯誤 -->
+        <rect x="0" y="4" width="640" height="104" rx="5" fill="var(--badbg)"/>
+        <text x="16" y="28" font-size="12.5" font-weight="700" fill="var(--bad)">✕　沒有處理虛人孔</text>
+        <path d="M70 72h140l60-26h140l60 26h100" fill="none" stroke="var(--ok)" stroke-width="6"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="70" cy="72" r="9" fill="var(--ok)" stroke="var(--badbg)" stroke-width="2"/>
+        <circle cx="570" cy="72" r="9" fill="var(--bad)" stroke="var(--badbg)" stroke-width="2"/>
+        <g fill="var(--ink3)">
+          <circle cx="210" cy="72" r="6" fill="var(--card)" stroke="var(--ink3)" stroke-width="2"/>
+          <circle cx="270" cy="46" r="6" fill="var(--card)" stroke="var(--ink3)" stroke-width="2"/>
+          <circle cx="410" cy="46" r="6" fill="var(--card)" stroke="var(--ink3)" stroke-width="2"/>
+          <circle cx="470" cy="72" r="6" fill="var(--card)" stroke="var(--ink3)" stroke-width="2"/>
+        </g>
+        <text x="70" y="98" text-anchor="middle" font-size="10.5" fill="var(--ok)">真人孔（已開）</text>
+        <text x="340" y="96" text-anchor="middle" font-size="10.5" fill="var(--ink3)">
+          轉折點被當成人孔 → 每小段都「一端無孔」→ 整段都算已巡檢</text>
+        <text x="570" y="98" text-anchor="middle" font-size="10.5" fill="var(--bad)">真人孔（未開）</text>
+
+        <!-- 正確 -->
+        <rect x="0" y="126" width="640" height="104" rx="5" fill="var(--okbg)"/>
+        <text x="16" y="150" font-size="12.5" font-weight="700" fill="var(--ok)">✓　自動穿越合併後</text>
+        <path d="M70 194h140l60-26h140l60 26h100" fill="none" stroke="var(--rule)" stroke-width="6"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M70 194h140l60-26h50" fill="none" stroke="var(--ok)" stroke-width="6"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="70" cy="194" r="9" fill="var(--ok)" stroke="var(--okbg)" stroke-width="2"/>
+        <circle cx="570" cy="194" r="9" fill="var(--bad)" stroke="var(--okbg)" stroke-width="2"/>
+        <g opacity=".45" fill="var(--ink3)">
+          <circle cx="210" cy="194" r="3"/><circle cx="270" cy="168" r="3"/>
+          <circle cx="410" cy="168" r="3"/><circle cx="470" cy="194" r="3"/>
+        </g>
+        <text x="200" y="220" text-anchor="middle" font-size="10.5" fill="var(--ok)">前半：已巡檢</text>
+        <text x="450" y="220" text-anchor="middle" font-size="10.5" fill="var(--ink3)">後半：未巡檢</text>
+        <line x1="330" y1="158" x2="330" y2="178" stroke="var(--okbg)" stroke-width="3"/>
+      </g>
+    </svg>
+    <figcaption><b>圖 4</b>　轉折點只是幾何上的彎折，不影響誰負責巡檢。
+      系統會自動「穿越」它們，把被切碎的管段接回成一條完整的邏輯管段，
+      再從中點一分為二。台南市共穿越了 <b>3,600 個</b>轉折點，
+      14,069 條原始管線因此合併成 <b>10,469 條邏輯管段</b>。</figcaption>
+  </figure>
+
+  <h3>什麼情況下不能穿越</h3>
+  <p>只有<strong>「虛人孔」而且「剛好接兩條管線」</strong>時才穿越。兩個例外：</p>
+  <ul>
+    <li><strong>接三條以上（分岔）</strong>：這是一個 Y 字路口，管線在這裡分流，
+        不能硬接成一條，各分支各自獨立處理。</li>
+    <li><strong>只接一條（末端）</strong>：這是管線的盡頭，沒有東西可以接。</li>
+  </ul>
+  <p>這兩種情況下，該端點視同「沒有人孔」，適用圖 3 的情況二或情況三。</p>
+</section>
+
+<!-- ══════════════ 4 ══════════════ -->
+<section id="s4">
+  <h2><span class="no">04</span>完整計算流程</h2>
+  <p class="lead">從原始圖資到網頁資料，一共七個步驟，全部寫在一支 Python 程式裡。</p>
+
+  <figure>
+    <svg viewBox="0 0 640 172" role="img" aria-label="資料處理流程">
+      <g font-family="Noto Sans TC, Noto Sans CJK TC, sans-serif" font-size="11">
+        <g>
+          <rect x="4" y="14" width="118" height="52" rx="4" fill="var(--rule2)" stroke="var(--rule)"/>
+          <text x="63" y="36" text-anchor="middle" font-weight="700" font-size="12" fill="var(--ink)">管線 SHP</text>
+          <text x="63" y="53" text-anchor="middle" fill="var(--ink2)">14,069 條</text>
+          <rect x="4" y="76" width="118" height="52" rx="4" fill="var(--rule2)" stroke="var(--rule)"/>
+          <text x="63" y="98" text-anchor="middle" font-weight="700" font-size="12" fill="var(--ink)">人孔 SHP</text>
+          <text x="63" y="115" text-anchor="middle" fill="var(--ink2)">14,833 座</text>
+          <rect x="4" y="138" width="118" height="30" rx="4" fill="var(--datbg)" stroke="var(--rule)"/>
+          <text x="63" y="158" text-anchor="middle" font-weight="700" font-size="12" fill="var(--dat)">開孔 Excel</text>
+        </g>
+        <g>
+          <rect x="158" y="14" width="124" height="52" rx="4" fill="var(--card)" stroke="var(--blue)"/>
+          <text x="220" y="36" text-anchor="middle" font-weight="700" font-size="12" fill="var(--blue)">建立管網圖</text>
+          <text x="220" y="53" text-anchor="middle" fill="var(--ink2)">節點分類</text>
+          <rect x="158" y="76" width="124" height="52" rx="4" fill="var(--card)" stroke="var(--blue)"/>
+          <text x="220" y="98" text-anchor="middle" font-weight="700" font-size="12" fill="var(--blue)">穿越轉折點</text>
+          <text x="220" y="115" text-anchor="middle" fill="var(--ink2)">合併邏輯管段</text>
+        </g>
+        <g>
+          <rect x="318" y="44" width="124" height="52" rx="4" fill="var(--card)" stroke="var(--blue)"/>
+          <text x="380" y="66" text-anchor="middle" font-weight="700" font-size="12" fill="var(--blue)">從中點切半</text>
+          <text x="380" y="83" text-anchor="middle" fill="var(--ink2)">17,446 受檢單元</text>
+        </g>
+        <g>
+          <rect x="478" y="14" width="158" height="52" rx="4" fill="var(--okbg)" stroke="var(--ok)"/>
+          <text x="557" y="36" text-anchor="middle" font-weight="700" font-size="12" fill="var(--ok)">network.json</text>
+          <text x="557" y="53" text-anchor="middle" fill="var(--ink2)">幾何＋拓樸　1.7 MB</text>
+          <rect x="478" y="76" width="158" height="52" rx="4" fill="var(--okbg)" stroke="var(--ok)"/>
+          <text x="557" y="98" text-anchor="middle" font-weight="700" font-size="12" fill="var(--ok)">years/115.json</text>
+          <text x="557" y="115" text-anchor="middle" fill="var(--ink2)">開孔結果　112 KB</text>
+        </g>
+        <g stroke="var(--ink3)" stroke-width="1.3" fill="none" marker-end="url(#a3)">
+          <path d="M126 40h26"/><path d="M126 102h26"/><path d="M126 153h150v-45h-20" />
+          <path d="M286 40v26h26"/><path d="M286 102v-26h26"/>
+          <path d="M446 70h20v-30h6"/><path d="M446 70h20v32h6"/>
+        </g>
+        <defs><marker id="a3" markerWidth="6" markerHeight="6" refX="5.5" refY="3" orient="auto">
+          <path d="M0 0l6 3L0 6z" fill="var(--ink3)"/></marker></defs>
+      </g>
+    </svg>
+    <figcaption><b>圖 5</b>　管線與人孔圖資決定「管網長什麼樣」，Excel 只決定「今年開了哪些孔」。
+      這個分離是後面資料設計的基礎。</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li><b>讀圖資，建立管網</b>
+      <span>管線的 <code>US_MH</code>（上游人孔）與 <code>DS_MH</code>（下游人孔）欄位就是拓樸關係，
+        不需要用座標去猜誰接誰。用「行政區＋編號」當節點識別碼。</span></li>
+    <li><b>補救對不上的端點</b>
+      <span>有 275 個管線端點的編號在人孔圖層裡找不到。
+        系統改用座標去比對，1 公尺以內就視為同一個節點，救回其中 166 個。
+        剩下 109 個標記為<span class="chip c-dat"><i style="background:var(--dat)"></i>圖資編號缺漏</span>。</span></li>
+    <li><b>節點分類</b>
+      <span>依人孔圖層的 <code>Type</code> 欄位分成三類：真人孔（正常／覆蓋，8,470 個）、
+        虛人孔（轉折點，6,073 個）、查無此節點（109 個）。</span></li>
+    <li><b>穿越轉折點，合併管段</b>
+      <span>沿著管線走，遇到「虛人孔且只接兩條管線」就繼續走，直到碰到真人孔、分岔或末端才停。
+        沿途的管線接成一條邏輯管段。</span></li>
+    <li><b>切成受檢單元</b>
+      <span>兩端都是真人孔就從中點切成兩半，各自記下負責的人孔；
+        只有一端是真人孔就整段不切。全市得到 17,446 個受檢單元。</span></li>
+    <li><b>套上開孔紀錄</b>
+      <span>查每個單元的負責人孔今年開了幾次、各在哪幾個月開的，寫成年度檔。</span></li>
+    <li><b>驗證並輸出</b>
+      <span>檢查所有單元長度加起來是否等於管線總長，通過才輸出。</span></li>
+  </ol>
+</section>
+
+<!-- ══════════════ 5 ══════════════ -->
+<section id="s5">
+  <h2><span class="no">05</span>未巡檢要拆成兩種，不能混為一談</h2>
+  <p class="lead">207 公里沒巡到，但其中只有 64 公里是「該去而沒去」。這個區分是整套系統最有價值的地方。</p>
+
+  <p>如果報表只寫「未巡檢 207 公里，覆蓋率 75.5%」，看報表的人會直覺認為是巡檢人力不足。
+     但實際拆開來看，性質完全不同：</p>
+
+  <div class="tw">
+  <table>
+    <tr><th>分類</th><th class="n">長度</th><th>意思</th><th>該怎麼處理</th></tr>
+    <tr>
+      <td><span class="chip c-bad"><i style="background:var(--bad)"></i>列管人孔未開孔</span></td>
+      <td class="n">63.81 km</td>
+      <td>有孔、也列管了，今年就是沒開</td>
+      <td><strong>排進開孔計畫就能補上</strong></td>
+    </tr>
+    <tr>
+      <td><span class="chip c-str"><i style="background:var(--str)"></i>管段兩端無人孔</span></td>
+      <td class="n">115.72 km</td>
+      <td>根本沒有孔可以開</td>
+      <td>要增設人孔，或改用 CCTV 等其他方式</td>
+    </tr>
+    <tr>
+      <td><span class="chip c-dat"><i style="background:var(--dat)"></i>圖資編號缺漏</span></td>
+      <td class="n">24.83 km</td>
+      <td>端點編號對不上人孔圖層</td>
+      <td>補正圖資，不是巡檢的問題</td>
+    </tr>
+    <tr>
+      <td><span class="chip c-dat"><i style="background:var(--dat)"></i>實人孔未列管</span></td>
+      <td class="n">2.91 km</td>
+      <td>有真人孔，但不在列管名冊裡</td>
+      <td>評估是否納入列管</td>
+    </tr>
+  </table>
+  </div>
+
+  <div class="box warn">
+    <h4>這個區分為什麼重要</h4>
+    <p>115.72 公里是<strong>結構性限制</strong>，不管投入多少人力都巡不到。
+       把它算進巡檢績效檢討，等於在要求同仁做一件物理上做不到的事。
+       反過來說，真正可以透過管理改善的只有 63.81 公里，
+       而且這個數字和「同一段被重複巡檢的 62.54 公里」幾乎一樣多 ——
+       也就是說，<strong>光是調整抽樣分配就能把覆蓋率拉高接近一倍的缺口</strong>。</p>
+  </div>
+
+  <p>所以地圖上這兩種未巡檢用了明顯不同的顏色：
+     可行動的用紅色，結構性限制的用灰藍色。這不是配色偏好，是資訊設計上的刻意區隔。</p>
+</section>
+
+<!-- ══════════════ 6 ══════════════ -->
+<section id="s6">
+  <h2><span class="no">06</span>月份與累積怎麼算</h2>
+  <p class="lead">兩種模式回答兩個不同的問題：「這個月做了多少」與「到這個月為止做到哪」。</p>
+
+  <h4>單月模式</h4>
+  <p>某一段管線，只要它的負責人孔在該月份有開孔紀錄，就計入該月。
+     一段管線如果 2 月和 5 月各開過一次，那 2 月和 5 月都會算到它。</p>
+
+  <h4>累積模式</h4>
+  <p>顯示指定時間之前曾經被巡檢過的管線，並且<strong>依「第一次被巡到的時間」上色</strong>。
+     關鍵在於同一段只算一次，用首次時間計算，不會因為重複巡檢而灌水。</p>
+
+  <h4>月粒度與日粒度</h4>
+  <p>上面兩種模式都可以用<strong>月</strong>或<strong>日</strong>推進。
+     月粒度是 12 格；日粒度依實際有紀錄的檢查日推進，115 年度共 <em>158 個檢查日</em>
+     （2026-01-18 至 2026-09-09），可以看到巡檢隊伍在市區裡逐日推進的過程。
+     兩種粒度切換時時間點會自動對齊 —— 從「3 月」切到日粒度會跳到 3 月最後一個檢查日，
+     累積長度維持一致。</p>
+
+  <div class="box">
+    <h4>逐日動畫的效能處理</h4>
+    <p>158 個畫面如果每一幀都重建 17,446 條線，中階手機會卡。
+       系統改成<strong>底圖固定、只更新會變動的那一層</strong>：
+       未巡檢的暗色底線畫一次就不動，各月份各自一層，
+       播放時只有「當前月份」那一層需要更新，並用二分搜尋找出該層要顯示到第幾筆。
+       實測單幀從 30.9 毫秒降到 1.3 毫秒，即使把 CPU 效能限制到四分之一也只需 4.5 毫秒。</p>
+  </div>
+
+  <div class="box">
+    <h4>為什麼各月加總會大於累積值</h4>
+    <p>115 年度各月加起來是 707.8 公里，但累積只有 639.45 公里。
+       差額 68.35 公里就是<strong>同一段管線被重複巡檢的部分</strong>。
+       這個差額本身就是一個有用的管理指標，系統在總覽頁會直接點出來。</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 640 150" role="img" aria-label="單月與累積的差異">
+      <g font-family="Noto Sans TC, Noto Sans CJK TC, sans-serif" font-size="11">
+        <text x="8" y="18" font-size="12.5" font-weight="700" fill="var(--ink)">同一段管線的巡檢紀錄</text>
+        <line x1="90" y1="44" x2="600" y2="44" stroke="var(--rule)" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="175" cy="44" r="8" fill="#46C8E0" stroke="var(--paper)" stroke-width="2"/>
+        <circle cx="430" cy="44" r="8" fill="#8E7BE6" stroke="var(--paper)" stroke-width="2"/>
+        <text x="175" y="28" text-anchor="middle" fill="var(--ink2)">2 月開孔</text>
+        <text x="430" y="28" text-anchor="middle" fill="var(--ink2)">5 月開孔</text>
+
+        <text x="8" y="82" fill="var(--ink2)">單月模式</text>
+        <rect x="90" y="70" width="140" height="17" rx="3" fill="#46C8E0" opacity=".9"/>
+        <text x="160" y="83" text-anchor="middle" fill="#0B2530" font-size="10.5" font-weight="700">2 月：算它</text>
+        <rect x="246" y="70" width="140" height="17" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+        <text x="316" y="83" text-anchor="middle" fill="var(--ink3)" font-size="10.5">3、4 月：不算</text>
+        <rect x="402" y="70" width="140" height="17" rx="3" fill="#8E7BE6" opacity=".9"/>
+        <text x="472" y="83" text-anchor="middle" fill="#0B2530" font-size="10.5" font-weight="700">5 月：也算它</text>
+        <text x="556" y="83" fill="var(--bad)" font-size="10.5">→ 算了兩次</text>
+
+        <text x="8" y="122" fill="var(--ink2)">累積模式</text>
+        <rect x="90" y="110" width="452" height="17" rx="3" fill="#46C8E0" opacity=".9"/>
+        <text x="316" y="123" text-anchor="middle" fill="#0B2530" font-size="10.5" font-weight="700">
+          從 2 月起一直算「已巡檢」，用首次月份（2 月）的顏色</text>
+        <text x="556" y="123" fill="var(--ok)" font-size="10.5">→ 只算一次</text>
+      </g>
+    </svg>
+    <figcaption><b>圖 6</b>　單月模式適合看「當月產出」，累積模式適合看「年度進度」。
+      兩者的數字不該互相比對，因為定義本來就不同。</figcaption>
+  </figure>
+</section>
+
+<!-- ══════════════ 7 ══════════════ -->
+<section id="s7">
+  <h2><span class="no">07</span>資料怎麼存：為什麼這樣設計</h2>
+  <p class="lead">管網幾何和年度成果分開存。這個決定直接影響未來十年的維護成本。</p>
+
+  <p>最直覺的做法是「一個年度一個完整檔案」，但那樣每加一個年度就要重複存一次
+     1.7 MB 的管線幾何。十年就是 17 MB，而且圖資更新時會有十份不一致的副本。</p>
+
+  <p>所以系統拆成三種檔案：</p>
+
+  <div class="tw">
+  <table>
+    <tr><th>檔案</th><th class="n">大小</th><th>內容</th><th>什麼時候會變</th></tr>
+    <tr><td><code>network/*.json</code></td><td class="n">1.7 MB</td>
+        <td>管線幾何、受檢單元切分結果、各單元屬於哪個行政區、是否結構性無法巡檢</td>
+        <td>只有管線圖資更新時</td></tr>
+    <tr><td><code>years/*.json</code></td><td class="n">112 KB</td>
+        <td>每個單元今年開幾次、哪幾個月開的、該人孔是否列管</td>
+        <td>每次補新的開孔紀錄</td></tr>
+    <tr><td><code>boundaries/*.json</code></td><td class="n">138 KB</td>
+        <td>行政區界線</td><td>幾乎不會變</td></tr>
+  </table>
+  </div>
+
+  <p>年度檔用<strong>索引對齊</strong>的方式和管網檔關聯 ——
+     年度檔的第 500 筆，對應的就是管網檔的第 500 個受檢單元。
+     不需要 id 欄位，也不需要做 join。</p>
+
+  <h3>月份用位元遮罩存</h3>
+  <p>每個單元的巡檢月份不是存成陣列 <code>[2, 5]</code>，而是存成一個整數 <code>18</code>。
+     因為 18 的二進位是 <code>000000010010</code>，從右邊數第 2 位和第 5 位是 1。</p>
+
+  <figure>
+    <svg viewBox="0 0 640 116" role="img" aria-label="位元遮罩示意">
+      <g font-family="Noto Sans TC, Noto Sans CJK TC, sans-serif">
+        <text x="8" y="22" font-size="12.5" fill="var(--ink2)">
+          數值 <tspan font-weight="700" font-size="15" fill="var(--ink)">18</tspan>
+          代表「2 月和 5 月有開孔」</text>
+        <g font-size="11" text-anchor="middle">
+          <g id="cells">
+            <text x="0" y="0"></text>
+          </g>
+        </g>
+        <g>
+          <!-- 12 格 -->
+          <g font-family="Noto Sans TC, Noto Sans CJK TC" font-size="11" text-anchor="middle">
+            <g fill="var(--ink3)">
+              <text x="60" y="48">12月</text><text x="108" y="48">11月</text><text x="156" y="48">10月</text>
+              <text x="204" y="48">9月</text><text x="252" y="48">8月</text><text x="300" y="48">7月</text>
+              <text x="348" y="48">6月</text><text x="396" y="48">5月</text><text x="444" y="48">4月</text>
+              <text x="492" y="48">3月</text><text x="540" y="48">2月</text><text x="588" y="48">1月</text>
+            </g>
+            <g>
+              <rect x="38" y="58" width="44" height="34" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+              <rect x="86" y="58" width="44" height="34" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+              <rect x="134" y="58" width="44" height="34" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+              <rect x="182" y="58" width="44" height="34" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+              <rect x="230" y="58" width="44" height="34" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+              <rect x="278" y="58" width="44" height="34" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+              <rect x="326" y="58" width="44" height="34" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+              <rect x="374" y="58" width="44" height="34" rx="3" fill="#8E7BE6"/>
+              <rect x="422" y="58" width="44" height="34" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+              <rect x="470" y="58" width="44" height="34" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+              <rect x="518" y="58" width="44" height="34" rx="3" fill="#46C8E0"/>
+              <rect x="566" y="58" width="44" height="34" rx="3" fill="var(--rule2)" stroke="var(--rule)"/>
+            </g>
+            <g font-size="13" font-weight="700" fill="var(--ink3)">
+              <text x="60" y="81">0</text><text x="108" y="81">0</text><text x="156" y="81">0</text>
+              <text x="204" y="81">0</text><text x="252" y="81">0</text><text x="300" y="81">0</text>
+              <text x="348" y="81">0</text>
+              <text x="396" y="81" fill="#0B2530">1</text>
+              <text x="444" y="81">0</text><text x="492" y="81">0</text>
+              <text x="540" y="81" fill="#0B2530">1</text>
+              <text x="588" y="81">0</text>
+            </g>
+          </g>
+          <text x="324" y="110" text-anchor="middle" font-size="11" fill="var(--ink3)">
+            12 個月只佔一個整數欄位，年度檔因此只有 112 KB</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>圖 7</b>　這個做法讓手機切換年度幾乎沒有延遲。
+      前端要判斷「某月是否有巡檢」，就是一次位元運算，17,446 筆算完不到 1 毫秒。</figcaption>
+  </figure>
+
+  <div class="box key">
+    <h4>擴充時發生什麼事</h4>
+    <p><strong>加月份</strong>：換一份 Excel 重跑程式，年度檔裡的數字改變，管網檔完全不動。<br>
+       <strong>加年度</strong>：設定檔加一筆，多產生一個 112 KB 的年度檔，管網檔共用。<br>
+       <strong>換圖資</strong>：產生新的管網檔，舊年度仍指向舊管網檔 ——
+       <strong>歷年統計數字不會因為圖資更新而被追溯修改</strong>，這對稽核很重要。</p>
+  </div>
+</section>
+
+<!-- ══════════════ 8 ══════════════ -->
+<section id="s8">
+  <h2><span class="no">08</span>網頁端的運作方式</h2>
+  <p class="lead">純靜態網站，沒有後端、沒有資料庫。所有統計都在使用者的瀏覽器裡即時算。</p>
+
+  <h3>為什麼不做後端</h3>
+  <p>整份資料只有 2 MB，一次載進瀏覽器，之後所有篩選、統計、切換模式都是本地運算，
+     不必再連線。這帶來三個好處：反應是瞬間的、沒有伺服器要維護、可以放在 GitHub Pages 免費代管。
+     代價是首次載入要 2 MB，在 4G 上大約 2 到 3 秒。</p>
+
+  <h3>統計即時重算</h3>
+  <p>使用者每次改篩選條件，系統就掃過 17,446 個單元重新加總。
+     這個迴圈在手機上約 3 到 5 毫秒，所以「選了行政區，左邊的數字立刻跟著變」是可行的，
+     不需要預先算好各種組合。</p>
+
+  <h3>畫線的效能處理</h3>
+  <p>17,446 條線如果各自建立一個圖層物件，手機拖動地圖會卡。
+     系統改成<strong>依顏色分組</strong>：同一種顏色的線全部合併成一個多線段物件，
+     整張圖只有 4 到 13 個圖層物件，滑動就很順。</p>
+
+  <p>代價是合併後的線無法個別點擊，所以點選改成自己實作：
+     使用者點下去時，先用每段的邊界框快速篩掉絕大多數，
+     剩下少數幾段才計算「點到線的實際距離」，取最近的一段。
+     手機的判定範圍放寬到 22 像素，細線也按得到。</p>
+
+  <div class="tw">
+  <table>
+    <tr><th>功能</th><th>做法</th></tr>
+    <tr><td>三種著色模式</td><td>狀態、次數、月份。切換時只是換分組規則，資料不重載</td></tr>
+    <tr><td>篩選</td><td>年度、行政區、巡檢狀態、巡檢次數、最短長度，條件可疊加</td></tr>
+    <tr><td>行政區界</td><td>選區時以虛線框出，地圖自動縮放到整個區界可見</td></tr>
+    <tr><td>浮動資訊視窗</td><td>可拖曳、縮放、收合、關閉；字級固定，縮小時改用捲動而非壓縮排版</td></tr>
+    <tr><td>定位</td><td>瀏覽器定位 API，可依距離排序附近的未巡檢管段</td></tr>
+    <tr><td>離線版</td><td>建置時可輸出單一 HTML，資料與程式全部內嵌，雙擊即開</td></tr>
+  </table>
+  </div>
+
+  <p>地圖程式 Leaflet 打包在專案內，不從外部 CDN 載入 ——
+     公部門內網常會擋外部 CDN，這樣比較保險。</p>
+</section>
+
+<!-- ══════════════ 9 ══════════════ -->
+<section id="s9">
+  <h2><span class="no">09</span>怎麼驗證算得對不對</h2>
+  <p class="lead">這類換算最怕的是「看起來合理但其實重複計算」。系統用四個檢查把關。</p>
+
+  <div class="box key">
+    <h4>檢查一：長度守恆（最重要）</h4>
+    <p>所有受檢單元的長度加起來，必須等於管線圖資的總長度。
+       目前是 <strong>846,724.68 公尺 對 846,724.68 公尺，誤差 0.2 公尺</strong>，
+       來自小數點四捨五入。</p>
+    <p>這一項通過，就同時證明了沒有任何一段管線被重複計算、也沒有任何一段被遺漏。
+       建置程式把它寫成自動檢查，誤差超過 5 公尺會直接示警。</p>
+  </div>
+
+  <ul>
+    <li><strong>半段必成對</strong>：從中點切開的單元有 13,954 個，一定是偶數。</li>
+    <li><strong>人孔負責的半段數＝它接的管線數</strong>：一座接四條管線的人孔，
+        應該負責四個半段。抽驗結果相符。</li>
+    <li><strong>座標系統驗證</strong>：TWD97 二度分帶轉 WGS84 的結果，
+        與圖資內建的經緯度欄位比對，誤差小於 1 公分。</li>
+  </ul>
+
+  <p>另外，建置過程會主動印出資料品質問題，包括 306 座已開孔但沒接任何管線的孤立人孔、
+     新市區有 84% 節點是虛人孔、歸仁區 16.22 公里端點編號對不上等等。
+     這些不是程式錯誤，是圖資本身的狀況，需要業務單位判斷。</p>
+</section>
+
+<!-- ══════════════ 10 ══════════════ -->
+<section id="s10">
+  <h2><span class="no">10</span>接手前必讀：十個容易誤解的點</h2>
+  <p class="lead">如果要重寫或接手這套系統，這幾點沒注意就會算錯。</p>
+
+  <ol>
+    <li><strong>虛人孔不是人孔。</strong>人孔圖層裡 41% 的節點是轉折點，
+        直接拿來當受檢端點，覆蓋率會嚴重高估。</li>
+    <li><strong>拓樸用編號，不要用座標猜。</strong>管線的 <code>US_MH</code>／<code>DS_MH</code>
+        欄位已經寫明誰接誰，座標吸附只用在編號對不上的補救。</li>
+    <li><strong>節點識別碼要含行政區。</strong>不同行政區會有相同的人孔編號。</li>
+    <li><strong>「沒有人孔」和「有人孔但沒開」是兩回事。</strong>
+        前者是結構性限制，後者才是可以改善的績效。</li>
+    <li><strong>單月長度加總不等於累積長度。</strong>差額是重複巡檢，不是計算錯誤。</li>
+    <li><strong>累積要用首次巡檢月份。</strong>用最後一次或每次都算，都會重複灌水。</li>
+    <li><strong>長度守恆是驗收條件。</strong>任何改動之後都要重跑這個檢查。</li>
+    <li><strong>年度資料和管網資料要分開。</strong>混在一起會導致圖資更新時，
+        歷年統計數字跟著變動。</li>
+    <li><strong>開孔紀錄表比列管清單權威。</strong>紀錄表裡有 148 座人孔不在列管清單中，
+        次數與月份一律以紀錄表為準。</li>
+    <li><strong>覆蓋率不等於巡檢品質。</strong>這套系統只回答「有沒有去看」，
+        不回答「管線狀況好不好」。後者要另外的檢測資料。</li>
+  </ol>
+
+  <div class="box">
+    <h4>技術規格摘要</h4>
+    <p>建置端 Python 3（pandas、numpy、pyshp、pyproj、openpyxl），
+       單次執行約 30 秒。前端純 HTML／CSS／JavaScript，無框架，
+       地圖使用 Leaflet 1.9.4。輸出為靜態檔案，可放任何靜態主機。
+       原始座標系統 EPSG:3826（TWD97 二度分帶），輸出為 EPSG:4326（WGS84）。</p>
+  </div>
+</section>
+
+<footer>
+  <p>管線及人孔圖資、開孔紀錄為台南市政府資料。行政區界取自內政部國土測繪中心「全國村里界圖」，
+     經 g0v 社群 twgeojson 專案轉檔後再簡化。底圖為 OpenStreetMap ／ CARTO。
+     地圖程式 Leaflet 1.9.4（BSD-2-Clause）。</p>
+</footer>
+
+</div>
+</body>
+</html>

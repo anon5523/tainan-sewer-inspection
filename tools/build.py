@@ -282,25 +282,33 @@ def build_year(spec, net, meta):
     log(f'   列管人孔 {len(listed):,} 座｜開孔紀錄 {len(rc):,} 筆'
         + (f'（日期無法解析 {bad} 筆已略過）' if bad else ''))
 
-    # 每座人孔：月份位元遮罩 + 總次數
+    # 每座人孔：月份位元遮罩 + 總次數 + 檢查日索引
+    dates = sorted({t.date() for t in rc._t})
+    didx = {d: i for i, d in enumerate(dates)}
     mask, cnt = defaultdict(int), Counter()
+    days = defaultdict(set)
     for d, n, t in zip(rc._d, rc._n, rc._t):
         mask[(d, n)] |= 1 << (t.month - 1)
         cnt[(d, n)] += 1
+        days[(d, n)].add(didx[t.date()])
     months = sorted({t.month for t in rc._t})
+    log(f'   檢查日 {len(dates)} 天（{dates[0]} ~ {dates[-1]}）')
     log(f'   涵蓋月份 {months}｜有開孔人孔 {len(cnt):,} 座')
 
     U = net['units']
     dists = net['dists']
     n = len(U['len'])
     ym, yc, yl = [0] * n, [0] * n, [0] * n
+    yd = [None] * n
     for i in range(n):
         if U['blocked'][i]:
+            yd[i] = []
             continue
         k = (dists[U['nodeDist'][i]], U['node'][i])
         ym[i] = mask.get(k, 0)
         yc[i] = cnt.get(k, 0)
         yl[i] = 1 if k in listed else 0
+        yd[i] = sorted(days.get(k, ()))
 
     covered = sum(U['len'][i] for i in range(n) if yc[i] > 0)
     log(f'   已巡檢 {covered/1000:,.2f} km／{net["totalLengthKm"]:,.2f} km '
@@ -312,9 +320,10 @@ def build_year(spec, net, meta):
 
     return {'id': yid, 'label': spec.get('label', yid), 'network': net['id'],
             'months': months, 'monthly_km': bym,
+            'dates': [str(d) for d in dates],
             'dataThrough': str(rc._t.max().date()),
             'listedCount': len(listed), 'openedCount': len(cnt),
-            'm': ym, 'cnt': yc, 'listed': yl}
+            'm': ym, 'cnt': yc, 'listed': yl, 'dd': yd}
 
 
 # ════════════════════════════════════════════════ 主程式
@@ -343,6 +352,7 @@ def main():
         log(f'   → {p.relative_to(ROOT)}  {p.stat().st_size/1e3:.0f} KB')
         years.append({'id': y['id'], 'label': y['label'], 'network': y['network'],
                       'file': f'years/{y["id"]}.json', 'months': y['months'],
+                      'dateCount': len(y['dates']),
                       'dataThrough': y['dataThrough']})
 
     manifest = {
