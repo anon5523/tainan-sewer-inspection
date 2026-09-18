@@ -158,8 +158,7 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
   <div class="kicker">技術邏輯說明書｜供資訊系統廠商參考</div>
   <h1>雨水下水道<br>開孔抽樣巡檢覆蓋率系統</h1>
   <p class="sub">這份文件說明這套系統「怎麼把人孔開孔紀錄換算成管線巡檢長度」，
-     以及為什麼中間有幾個步驟不能省。全文盡量用白話，
-     需要精確定義的地方才給規則與數字。</p>
+     以及為什麼中間有幾個步驟不能省。全文盡量用白話，需要精確定義的地方才給規則與數字。</p>
   <div class="meta">資料範圍：台南市 33 個行政區・115 年度・管線圖資基準日 2026-09-15</div>
 </header>
 
@@ -204,12 +203,12 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
         <rect x="232" y="24" width="176" height="66" rx="5" fill="var(--card)" stroke="var(--blue)" stroke-width="1.5"/>
         <text x="320" y="50" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--blue)">本系統</text>
         <text x="320" y="70" text-anchor="middle" font-size="11.5" fill="var(--ink2)">管網拓樸 + 半段分配</text>
-        <text x="320" y="85" text-anchor="middle" font-size="11.5" fill="var(--ink2)">17,446 個受檢單元</text>
+        <text x="320" y="85" text-anchor="middle" font-size="11.5" fill="var(--ink2)">22,029 個受檢單元</text>
 
         <rect x="456" y="24" width="176" height="66" rx="5" fill="var(--okbg)" stroke="var(--ok)"/>
         <text x="544" y="50" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ok)">線狀績效</text>
-        <text x="544" y="70" text-anchor="middle" font-size="11.5" fill="var(--ink2)">已巡檢 639.45 km</text>
-        <text x="544" y="85" text-anchor="middle" font-size="11.5" fill="var(--ink2)">未巡檢 207.27 km</text>
+        <text x="544" y="70" text-anchor="middle" font-size="11.5" fill="var(--ink2)">已巡檢 691.45 km</text>
+        <text x="544" y="85" text-anchor="middle" font-size="11.5" fill="var(--ink2)">未巡檢 155.28 km</text>
 
         <path d="M190 57h34" stroke="var(--ink3)" stroke-width="1.5" marker-end="url(#ar)"/>
         <path d="M414 57h34" stroke="var(--ink3)" stroke-width="1.5" marker-end="url(#ar)"/>
@@ -265,54 +264,93 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
       A 與 C 各自負責的另外一半，要等 A、C 真的被開了才算巡到。</figcaption>
   </figure>
 
-  <h3>三種情況，只有三種</h3>
-  <p>把上面的規則套到每一段管線，會出現三種狀況。系統對每一段管線只做這個判斷：</p>
+  <h3>把規則講精確：每一點歸最近的人孔</h3>
+  <p>「各一半」這句話在單純的一條管線上很好懂，但管網會分岔、會有死巷，
+     所以系統用一個更精確、而且涵蓋所有情況的說法：</p>
+
+  <div class="box key">
+    <h4>核心規則</h4>
+    <p>管線上的<strong>每一個點，歸屬於「沿著管線走最近的那一座實人孔」</strong>。
+       那座人孔今年有開孔，這一點就算被巡檢到。</p>
+  </div>
+
+  <p>這個規則不是另一套邏輯，它就是「各一半」的精確版本。兩座人孔直接相連時，
+     走到中點剛好兩邊距離相等，分界點自然落在中點 —— 完全等於各負責一半。
+     差別在於它還能正確處理另外三種情況：</p>
 
   <figure>
-    <svg viewBox="0 0 640 268" role="img" aria-label="三種覆蓋情況">
+    <svg viewBox="0 0 640 330" role="img" aria-label="四種覆蓋情況">
       <g font-family="Noto Sans TC, Noto Sans CJK TC, sans-serif">
-        <!-- 情況一 -->
-        <text x="8" y="22" font-size="13" font-weight="700" fill="var(--ink)">情況一　兩端都有人孔</text>
-        <line x1="120" y1="52" x2="520" y2="52" stroke="var(--rule)" stroke-width="7" stroke-linecap="round"/>
-        <line x1="120" y1="52" x2="320" y2="52" stroke="var(--ok)" stroke-width="7" stroke-linecap="round"/>
-        <circle cx="120" cy="52" r="9" fill="var(--ok)" stroke="var(--card)" stroke-width="2"/>
+        <text x="8" y="22" font-size="13" font-weight="700" fill="var(--ink)">情況一　兩端都有人孔 → 各一半</text>
+        <line x1="130" y1="52" x2="520" y2="52" stroke="var(--rule)" stroke-width="7" stroke-linecap="round"/>
+        <line x1="130" y1="52" x2="325" y2="52" stroke="var(--ok)" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="130" cy="52" r="9" fill="var(--ok)" stroke="var(--card)" stroke-width="2"/>
         <circle cx="520" cy="52" r="9" fill="var(--bad)" stroke="var(--card)" stroke-width="2"/>
-        <text x="120" y="34" text-anchor="middle" font-size="11" fill="var(--ok)">已開</text>
+        <text x="130" y="34" text-anchor="middle" font-size="11" fill="var(--ok)">已開</text>
         <text x="520" y="34" text-anchor="middle" font-size="11" fill="var(--bad)">未開</text>
-        <text x="220" y="72" text-anchor="middle" font-size="11" fill="var(--ok)">前半：已巡檢</text>
-        <text x="420" y="72" text-anchor="middle" font-size="11" fill="var(--ink3)">後半：未巡檢</text>
-        <line x1="320" y1="42" x2="320" y2="62" stroke="var(--card)" stroke-width="2.5"/>
+        <line x1="325" y1="42" x2="325" y2="62" stroke="var(--card)" stroke-width="2.5"/>
+        <text x="228" y="72" text-anchor="middle" font-size="11" fill="var(--ok)">已巡檢</text>
+        <text x="422" y="72" text-anchor="middle" font-size="11" fill="var(--ink3)">未巡檢</text>
 
-        <!-- 情況二 -->
-        <text x="8" y="120" font-size="13" font-weight="700" fill="var(--ink)">情況二　只有一端有人孔</text>
-        <line x1="120" y1="150" x2="520" y2="150" stroke="var(--ok)" stroke-width="7" stroke-linecap="round"/>
-        <circle cx="120" cy="150" r="9" fill="var(--ok)" stroke="var(--card)" stroke-width="2"/>
-        <path d="M514 142v16" stroke="var(--ink3)" stroke-width="2.5" stroke-linecap="round"/>
-        <text x="120" y="132" text-anchor="middle" font-size="11" fill="var(--ok)">已開</text>
-        <text x="540" y="132" text-anchor="middle" font-size="11" fill="var(--ink3)">末端</text>
-        <text x="320" y="170" text-anchor="middle" font-size="11" fill="var(--ok)">整段都算已巡檢（沒有別人可以分擔）</text>
+        <text x="8" y="112" font-size="13" font-weight="700" fill="var(--ink)">情況二　只有一端有人孔 → 整段</text>
+        <line x1="130" y1="142" x2="520" y2="142" stroke="var(--ok)" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="130" cy="142" r="9" fill="var(--ok)" stroke="var(--card)" stroke-width="2"/>
+        <path d="M514 134v16" stroke="var(--ink3)" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="130" y="124" text-anchor="middle" font-size="11" fill="var(--ok)">已開</text>
+        <text x="543" y="124" text-anchor="middle" font-size="11" fill="var(--ink3)">末端</text>
+        <text x="325" y="162" text-anchor="middle" font-size="11" fill="var(--ok)">整段已巡檢（沒有別人可以分擔）</text>
 
-        <!-- 情況三 -->
-        <text x="8" y="218" font-size="13" font-weight="700" fill="var(--ink)">情況三　兩端都沒有人孔</text>
-        <line x1="120" y1="248" x2="520" y2="248" stroke="var(--str)" stroke-width="7"
-              stroke-linecap="round" stroke-dasharray="1 11"/>
-        <path d="M126 240v16M514 240v16" stroke="var(--ink3)" stroke-width="2.5" stroke-linecap="round"/>
-        <text x="320" y="268" text-anchor="middle" font-size="11" fill="var(--str)">
-          永遠巡不到，除非增設人孔</text>
+        <text x="8" y="202" font-size="13" font-weight="700" fill="var(--ink)">情況三　分岔 → 依走過去的距離分界</text>
+        <path d="M130 250h120l70-36h180" fill="none" stroke="var(--rule)" stroke-width="7"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M250 250h150" fill="none" stroke="var(--rule)" stroke-width="7" stroke-linecap="round"/>
+        <path d="M130 250h120l70-36h34" fill="none" stroke="var(--ok)" stroke-width="7"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M250 250h74" fill="none" stroke="var(--ok)" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="130" cy="250" r="9" fill="var(--ok)" stroke="var(--card)" stroke-width="2"/>
+        <circle cx="500" cy="214" r="9" fill="var(--bad)" stroke="var(--card)" stroke-width="2"/>
+        <circle cx="400" cy="250" r="9" fill="var(--bad)" stroke="var(--card)" stroke-width="2"/>
+        <circle cx="250" cy="250" r="5" fill="var(--card)" stroke="var(--ink3)" stroke-width="2"/>
+        <text x="130" y="276" text-anchor="middle" font-size="11" fill="var(--ok)">已開</text>
+        <text x="250" y="276" text-anchor="middle" font-size="10.5" fill="var(--ink3)">分岔點（無人孔）</text>
+        <text x="528" y="210" font-size="11" fill="var(--bad)">未開</text>
+        <text x="420" y="270" font-size="11" fill="var(--bad)">未開</text>
+        <text x="325" y="310" text-anchor="middle" font-size="11" fill="var(--ok)">
+          兩條分支各自依距離分界，共用的那一段只算一次</text>
       </g>
     </svg>
-    <figcaption><b>圖 3</b>　每一段管線一定落在這三種情況之一。
-      第三種很重要，它不是「今年沒去巡」，而是「用這個方法根本巡不到」，
-      後面第 5 節會說明為什麼一定要分開統計。</figcaption>
+    <figcaption><b>圖 3</b>　情況三是最容易做錯的一種。分岔點本身沒有人孔，
+      但管線在這裡並沒有結束，所以不能把整段判給遠處的人孔，也不能因為分岔就整段放棄。
+      正確做法是每條分支各自依「走過去的距離」找分界點。</figcaption>
   </figure>
+
+  <div class="box warn">
+    <h4>一個真實案例：本系統原本就是在這裡算錯的</h4>
+    <p>安南區府安路六段有個分岔點（圖資編號 CANR0961-R3），它連著三條管線：
+       往西北 237 公尺到人孔 CANR4058（未開）、往東 95 公尺到 CANR4060（未開）、
+       以及<strong>往南只有 6.9 公尺到 CANR2446（已開孔）</strong>。</p>
+    <p>早期版本在分岔點直接截斷，把 237 公尺和 95 公尺兩整段都判給遠處的未開人孔，
+       等於完全忽略了 7 公尺外就有一座開過的孔。改成依網路距離分配後，
+       237 公尺這段變成 115.1 公尺已巡檢、122.0 公尺未巡檢；
+       95 公尺這段變成 44.2 公尺已巡檢、51.1 公尺未巡檢。</p>
+    <p>這一項修正讓全市覆蓋率從 75.52% 變成 <strong>81.66%</strong>，
+       「兩端無人孔」的長度從 115.72 公里降到 60.53 公里。</p>
+  </div>
+
+  <h3>情況四：完全沒有人孔</h3>
+  <p>如果一整組相連的管線裡<strong>一座實人孔都沒有</strong>，那不管怎麼走都找不到可以開的孔，
+     這些管段無論如何都巡不到。全市有 60.53 公里屬於這種情況，
+     第 5 節會說明為什麼一定要跟「有孔沒開」分開統計。</p>
 
   <div class="box key">
     <h4>給廠商的一句話規格</h4>
-    <p>把管網當成一張圖（node = 人孔，edge = 管線）。
-       每條 edge 從中點切成兩半，<strong>每一半的巡檢狀態，由它靠近的那個 node 決定</strong>。
-       如果某一端不是真的人孔，那整條 edge 都歸另一端管。</p>
+    <p>把管網當成一張圖（node ＝ 人孔與轉折點，edge ＝ 管線，權重 ＝ 長度），
+       以<strong>所有實人孔為起點跑一次多源 Dijkstra</strong>，
+       得到每個節點到最近實人孔的距離與歸屬。
+       對每條 edge，若兩端歸屬相同就整段歸它；不同則在
+       <code>x = (邊長 + dist[終點] − dist[起點]) / 2</code> 處切開，前後分別歸兩端的人孔。
+       這樣既涵蓋所有情況，也保證每一點只被算一次。</p>
   </div>
-</section>
 
 <!-- ══════════════ 3 ══════════════ -->
 <section id="s3">
@@ -326,6 +364,10 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
   <p>如果直接把虛人孔當成受檢端點，會發生什麼事？
      一段本來應該由遠處真人孔負責的長管線，會被轉折點切成好幾小段，
      每小段都變成「一端沒人孔 → 整段算已巡檢」，覆蓋率就被灌水了。</p>
+
+  <p>在第 2 節的「最近人孔」規則下，這件事會自動被處理好：
+     虛人孔<strong>不是起點</strong>，所以計算距離時會直接穿過它，
+     不會被誤認成可以開孔的地方。</p>
 
   <figure>
     <svg viewBox="0 0 640 240" role="img" aria-label="虛人孔穿越合併前後對照">
@@ -367,19 +409,17 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
       </g>
     </svg>
     <figcaption><b>圖 4</b>　轉折點只是幾何上的彎折，不影響誰負責巡檢。
-      系統會自動「穿越」它們，把被切碎的管段接回成一條完整的邏輯管段，
-      再從中點一分為二。台南市共穿越了 <b>3,600 個</b>轉折點，
-      14,069 條原始管線因此合併成 <b>10,469 條邏輯管段</b>。</figcaption>
+      計算距離時會直接穿過它們，分界點落在兩座真人孔的中間，而不是落在轉折點上。
+      台南市 14,652 個節點中，只有 <b>8,470 個</b>是實人孔，會被當成分配的起點。</figcaption>
   </figure>
 
-  <h3>什麼情況下不能穿越</h3>
-  <p>只有<strong>「虛人孔」而且「剛好接兩條管線」</strong>時才穿越。兩個例外：</p>
-  <ul>
-    <li><strong>接三條以上（分岔）</strong>：這是一個 Y 字路口，管線在這裡分流，
-        不能硬接成一條，各分支各自獨立處理。</li>
-    <li><strong>只接一條（末端）</strong>：這是管線的盡頭，沒有東西可以接。</li>
-  </ul>
-  <p>這兩種情況下，該端點視同「沒有人孔」，適用圖 3 的情況二或情況三。</p>
+  <h3>分岔點不需要特別處理</h3>
+  <p>早期版本曾經把「接三條以上的虛人孔」當成管線的盡頭來處理，這是錯的 ——
+     分岔點只是管線分流的地方，管線在那裡並沒有結束。
+     改用最近人孔分配之後，分岔點跟一般轉折點一樣直接穿過，
+     每條分支自然依距離找到自己的分界點，不必寫任何特例。</p>
+  <p>末端（只接一條管線）也一樣不用特例：走到那裡沒有別的人孔可以分擔，
+     整段自然歸唯一那座人孔，就是圖 3 的情況二。</p>
 </section>
 
 <!-- ══════════════ 4 ══════════════ -->
@@ -410,8 +450,8 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
         </g>
         <g>
           <rect x="318" y="44" width="124" height="52" rx="4" fill="var(--card)" stroke="var(--blue)"/>
-          <text x="380" y="66" text-anchor="middle" font-weight="700" font-size="12" fill="var(--blue)">從中點切半</text>
-          <text x="380" y="83" text-anchor="middle" fill="var(--ink2)">17,446 受檢單元</text>
+          <text x="380" y="66" text-anchor="middle" font-weight="700" font-size="12" fill="var(--blue)">最近人孔分配</text>
+          <text x="380" y="83" text-anchor="middle" fill="var(--ink2)">22,029 受檢單元</text>
         </g>
         <g>
           <rect x="478" y="14" width="158" height="52" rx="4" fill="var(--okbg)" stroke="var(--ok)"/>
@@ -439,20 +479,19 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
       <span>管線的 <code>US_MH</code>（上游人孔）與 <code>DS_MH</code>（下游人孔）欄位就是拓樸關係，
         不需要用座標去猜誰接誰。用「行政區＋編號」當節點識別碼。</span></li>
     <li><b>補救對不上的端點</b>
-      <span>有 275 個管線端點的編號在人孔圖層裡找不到。
-        系統改用座標去比對，1 公尺以內就視為同一個節點，救回其中 166 個。
-        剩下 109 個標記為<span class="chip c-dat"><i style="background:var(--dat)"></i>圖資編號缺漏</span>。</span></li>
+      <span>有 275 個管線端點的編號在人孔圖層裡找不到，改用座標比對，
+        1 公尺以內視為同一個節點。仍有 109 個無法對應。</span></li>
     <li><b>節點分類</b>
-      <span>依人孔圖層的 <code>Type</code> 欄位分成三類：真人孔（正常／覆蓋，8,470 個）、
-        虛人孔（轉折點，6,073 個）、查無此節點（109 個）。</span></li>
-    <li><b>穿越轉折點，合併管段</b>
-      <span>沿著管線走，遇到「虛人孔且只接兩條管線」就繼續走，直到碰到真人孔、分岔或末端才停。
-        沿途的管線接成一條邏輯管段。</span></li>
+      <span>依人孔圖層的 <code>Type</code> 欄位分成三類：實人孔（正常／覆蓋，8,470 個）、
+        虛人孔（轉折點，6,073 個）、查無此節點（109 個）。只有實人孔會成為分配起點。</span></li>
+    <li><b>多源最短路徑</b>
+      <span>以全部 8,470 座實人孔同時當起點跑 Dijkstra，
+        算出每個節點到最近實人孔的距離與歸屬。虛人孔在這一步被自然穿越。</span></li>
     <li><b>切成受檢單元</b>
-      <span>兩端都是真人孔就從中點切成兩半，各自記下負責的人孔；
-        只有一端是真人孔就整段不切。全市得到 17,446 個受檢單元。</span></li>
+      <span>每條管線若兩端歸屬同一座人孔就整段不切；歸屬不同則在距離相等處切開。
+        14,069 條管線中有 7,960 條被切開，共得到 22,029 個受檢單元。</span></li>
     <li><b>套上開孔紀錄</b>
-      <span>查每個單元的負責人孔今年開了幾次、各在哪幾個月開的，寫成年度檔。</span></li>
+      <span>查每個單元的歸屬人孔今年開了幾次、各在哪幾個月哪幾天開的，寫成年度檔。</span></li>
     <li><b>驗證並輸出</b>
       <span>檢查所有單元長度加起來是否等於管線總長，通過才輸出。</span></li>
   </ol>
@@ -461,9 +500,9 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
 <!-- ══════════════ 5 ══════════════ -->
 <section id="s5">
   <h2><span class="no">05</span>未巡檢要拆成兩種，不能混為一談</h2>
-  <p class="lead">207 公里沒巡到，但其中只有 64 公里是「該去而沒去」。這個區分是整套系統最有價值的地方。</p>
+  <p class="lead">155 公里沒巡到，但其中只有 67 公里是「該去而沒去」。這個區分是整套系統最有價值的地方。</p>
 
-  <p>如果報表只寫「未巡檢 207 公里，覆蓋率 75.5%」，看報表的人會直覺認為是巡檢人力不足。
+  <p>如果報表只寫「未巡檢 155 公里，覆蓋率 81.7%」，看報表的人會直覺認為是巡檢人力不足。
      但實際拆開來看，性質完全不同：</p>
 
   <div class="tw">
@@ -471,19 +510,19 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
     <tr><th>分類</th><th class="n">長度</th><th>意思</th><th>該怎麼處理</th></tr>
     <tr>
       <td><span class="chip c-bad"><i style="background:var(--bad)"></i>列管人孔未開孔</span></td>
-      <td class="n">63.81 km</td>
+      <td class="n">67.03 km</td>
       <td>有孔、也列管了，今年就是沒開</td>
       <td><strong>排進開孔計畫就能補上</strong></td>
     </tr>
     <tr>
       <td><span class="chip c-str"><i style="background:var(--str)"></i>管段兩端無人孔</span></td>
-      <td class="n">115.72 km</td>
+      <td class="n">60.53 km</td>
       <td>根本沒有孔可以開</td>
       <td>要增設人孔，或改用 CCTV 等其他方式</td>
     </tr>
     <tr>
       <td><span class="chip c-dat"><i style="background:var(--dat)"></i>圖資編號缺漏</span></td>
-      <td class="n">24.83 km</td>
+      <td class="n">24.82 km</td>
       <td>端點編號對不上人孔圖層</td>
       <td>補正圖資，不是巡檢的問題</td>
     </tr>
@@ -498,11 +537,12 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
 
   <div class="box warn">
     <h4>這個區分為什麼重要</h4>
-    <p>115.72 公里是<strong>結構性限制</strong>，不管投入多少人力都巡不到。
-       把它算進巡檢績效檢討，等於在要求同仁做一件物理上做不到的事。
-       反過來說，真正可以透過管理改善的只有 63.81 公里，
-       而且這個數字和「同一段被重複巡檢的 62.54 公里」幾乎一樣多 ——
-       也就是說，<strong>光是調整抽樣分配就能把覆蓋率拉高接近一倍的缺口</strong>。</p>
+    <p>60.53 公里是<strong>結構性限制</strong>，整組相連的管線裡一座實人孔都沒有，
+       不管投入多少人力都巡不到。把它算進巡檢績效檢討，
+       等於在要求同仁做一件物理上做不到的事。
+       反過來說，真正可以透過管理改善的只有 67.03 公里，
+       而且這個數字和「同一段被重複巡檢的 74.41 公里」幾乎一樣多 ——
+       也就是說，<strong>光是調整抽樣分配就足以補上整個可行動的缺口</strong>。</p>
   </div>
 
   <p>所以地圖上這兩種未巡檢用了明顯不同的顏色：
@@ -531,7 +571,7 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
 
   <div class="box">
     <h4>逐日動畫的效能處理</h4>
-    <p>158 個畫面如果每一幀都重建 17,446 條線，中階手機會卡。
+    <p>158 個畫面如果每一幀都重建 22,029 條線，中階手機會卡。
        系統改成<strong>底圖固定、只更新會變動的那一層</strong>：
        未巡檢的暗色底線畫一次就不動，各月份各自一層，
        播放時只有「當前月份」那一層需要更新，並用二分搜尋找出該層要顯示到第幾筆。
@@ -540,8 +580,8 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
 
   <div class="box">
     <h4>為什麼各月加總會大於累積值</h4>
-    <p>115 年度各月加起來是 707.8 公里，但累積只有 639.45 公里。
-       差額 68.35 公里就是<strong>同一段管線被重複巡檢的部分</strong>。
+    <p>115 年度各月加起來是 765.85 公里，但累積只有 691.45 公里。
+       差額 74.41 公里就是<strong>同一段管線被重複巡檢的部分</strong>。
        這個差額本身就是一個有用的管理指標，系統在總覽頁會直接點出來。</p>
   </div>
 
@@ -582,17 +622,17 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
   <p class="lead">管網幾何和年度成果分開存。這個決定直接影響未來十年的維護成本。</p>
 
   <p>最直覺的做法是「一個年度一個完整檔案」，但那樣每加一個年度就要重複存一次
-     1.7 MB 的管線幾何。十年就是 17 MB，而且圖資更新時會有十份不一致的副本。</p>
+     1.7 MB 的管線幾何。十年就是 23 MB，而且圖資更新時會有十份不一致的副本。</p>
 
   <p>所以系統拆成三種檔案：</p>
 
   <div class="tw">
   <table>
     <tr><th>檔案</th><th class="n">大小</th><th>內容</th><th>什麼時候會變</th></tr>
-    <tr><td><code>network/*.json</code></td><td class="n">1.7 MB</td>
+    <tr><td><code>network/*.json</code></td><td class="n">2.3 MB</td>
         <td>管線幾何、受檢單元切分結果、各單元屬於哪個行政區、是否結構性無法巡檢</td>
         <td>只有管線圖資更新時</td></tr>
-    <tr><td><code>years/*.json</code></td><td class="n">112 KB</td>
+    <tr><td><code>years/*.json</code></td><td class="n">259 KB</td>
         <td>每個單元今年開幾次、哪幾個月開的、該人孔是否列管</td>
         <td>每次補新的開孔紀錄</td></tr>
     <tr><td><code>boundaries/*.json</code></td><td class="n">138 KB</td>
@@ -658,7 +698,7 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
       </g>
     </svg>
     <figcaption><b>圖 7</b>　這個做法讓手機切換年度幾乎沒有延遲。
-      前端要判斷「某月是否有巡檢」，就是一次位元運算，17,446 筆算完不到 1 毫秒。</figcaption>
+      前端要判斷「某月是否有巡檢」，就是一次位元運算，22,029 筆算完不到 1 毫秒。</figcaption>
   </figure>
 
   <div class="box key">
@@ -681,12 +721,12 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
      代價是首次載入要 2 MB，在 4G 上大約 2 到 3 秒。</p>
 
   <h3>統計即時重算</h3>
-  <p>使用者每次改篩選條件，系統就掃過 17,446 個單元重新加總。
+  <p>使用者每次改篩選條件，系統就掃過 22,029 個單元重新加總。
      這個迴圈在手機上約 3 到 5 毫秒，所以「選了行政區，左邊的數字立刻跟著變」是可行的，
      不需要預先算好各種組合。</p>
 
   <h3>畫線的效能處理</h3>
-  <p>17,446 條線如果各自建立一個圖層物件，手機拖動地圖會卡。
+  <p>22,029 條線如果各自建立一個圖層物件，手機拖動地圖會卡。
      系統改成<strong>依顏色分組</strong>：同一種顏色的線全部合併成一個多線段物件，
      整張圖只有 4 到 13 個圖層物件，滑動就很順。</p>
 
@@ -719,16 +759,16 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
   <div class="box key">
     <h4>檢查一：長度守恆（最重要）</h4>
     <p>所有受檢單元的長度加起來，必須等於管線圖資的總長度。
-       目前是 <strong>846,724.68 公尺 對 846,724.68 公尺，誤差 0.2 公尺</strong>，
+       目前是 <strong>846,724.09 公尺 對 846,724.48 公尺，誤差 0.39 公尺</strong>，
        來自小數點四捨五入。</p>
     <p>這一項通過，就同時證明了沒有任何一段管線被重複計算、也沒有任何一段被遺漏。
        建置程式把它寫成自動檢查，誤差超過 5 公尺會直接示警。</p>
   </div>
 
   <ul>
-    <li><strong>半段必成對</strong>：從中點切開的單元有 13,954 個，一定是偶數。</li>
-    <li><strong>人孔負責的半段數＝它接的管線數</strong>：一座接四條管線的人孔，
-        應該負責四個半段。抽驗結果相符。</li>
+    <li><strong>退化驗證</strong>：兩座實人孔直接相連的管線，分界點必須恰好落在中點。
+        全市有 5,969 條符合這個條件的管線，切出來的兩段長度完全相等。</li>
+    <li><strong>切開的段必成對</strong>：7,960 條管線被分界點切開，各產生兩個單元。</li>
     <li><strong>座標系統驗證</strong>：TWD97 二度分帶轉 WGS84 的結果，
         與圖資內建的經緯度欄位比對，誤差小於 1 公分。</li>
   </ul>
@@ -746,6 +786,8 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
   <ol>
     <li><strong>虛人孔不是人孔。</strong>人孔圖層裡 41% 的節點是轉折點，
         直接拿來當受檢端點，覆蓋率會嚴重高估。</li>
+    <li><strong>分岔點不是管線的盡頭。</strong>在分岔處截斷、把整段判給遠處人孔，
+        會低估覆蓋率。本系統早期版本就犯過這個錯，差距達 6 個百分點。</li>
     <li><strong>拓樸用編號，不要用座標猜。</strong>管線的 <code>US_MH</code>／<code>DS_MH</code>
         欄位已經寫明誰接誰，座標吸附只用在編號對不上的補救。</li>
     <li><strong>節點識別碼要含行政區。</strong>不同行政區會有相同的人孔編號。</li>
@@ -760,6 +802,9 @@ footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--rule);
         次數與月份一律以紀錄表為準。</li>
     <li><strong>覆蓋率不等於巡檢品質。</strong>這套系統只回答「有沒有去看」，
         不回答「管線狀況好不好」。後者要另外的檢測資料。</li>
+    <li><strong>「檢查日期」的定義要跟填表單位確認。</strong>系統只看得到 Excel 裡的日期，
+        看不出那是現場開孔當天還是事後登錄當天。若兩者常有落差，
+        逐日動畫反映的會是登錄節奏而非實際巡檢節奏。</li>
   </ol>
 
   <div class="box">

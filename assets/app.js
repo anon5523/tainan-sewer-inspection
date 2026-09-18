@@ -25,6 +25,7 @@ const isPhone = () => window.matchMedia('(max-width:899px)').matches;
 const S = {
   mode: 0, month: null, cum: 1, playing: 0, gran: 'month', day: 0,
   f: { dists: new Set(), st: new Set(), cnt: new Set(), minLen: 0 },
+  tblDup: 0, tblKey: 'tot', tblDir: -1,
   onlyGap: false, myLL: null, gapSort: 'len', sortKey: 'gap', snapIdx: 0
 };
 let MF = null, NET = null, YR = null, SEG = [], ALL = null, VIS = [];
@@ -569,10 +570,103 @@ function drawP2() {
   });
 }
 
+
+/* ══════════════ 分頁 3：年度巡檢長度表 ══════════════ */
+function tableRows() {
+  // 行政區列不受「行政區篩選」影響，其餘條件照常套用
+  const base = SEG.filter(s => {
+    const f = S.f;
+    if (f.st.size && !f.st.has(s.st)) return false;
+    if (f.cnt.size && !f.cnt.has(Math.min(s.cnt, 3))) return false;
+    if (s.len < f.minLen) return false;
+    return true;
+  });
+  const by = new Map();
+  for (const s of base) {
+    let o = by.get(s.dist);
+    if (!o) by.set(s.dist, o = { d: s.dist, tot: 0, dup: new Float64Array(13),
+                                 uni: new Float64Array(13) });
+    o.tot += s.len;
+    for (let m = 1; m <= 12; m++) if (s.m >> (m - 1) & 1) o.dup[m] += s.len;
+    if (s.first) o.uni[s.first] += s.len;
+  }
+  const rows = [...by.values()];
+  for (const o of rows) {
+    o.dupSum = 0; o.uniSum = 0;
+    for (let m = 1; m <= 12; m++) { o.dupSum += o.dup[m]; o.uniSum += o.uni[m]; }
+    o.name = NET.dists[o.d];
+  }
+  return rows;
+}
+function drawP3() {
+  const rows = tableRows(), dup = S.tblDup;
+  const val = (o, k) => k === 'name' ? o.name
+    : k === 'tot' ? o.tot
+    : k === 'sum' ? (dup ? o.dupSum : o.uniSum)
+    : k === 'rate' ? (o.tot ? (dup ? o.dupSum : o.uniSum) / o.tot : 0)
+    : (dup ? o.dup[+k.slice(1)] : o.uni[+k.slice(1)]);
+  rows.sort((a, b) => {
+    const x = val(a, S.tblKey), y = val(b, S.tblKey);
+    if (S.tblKey === 'name') return S.tblDir * String(x).localeCompare(String(y), 'zh-Hant');
+    return S.tblDir * (x - y);
+  });
+  const T = { tot: 0, sum: 0, mo: new Float64Array(13) };
+  for (const o of rows) {
+    T.tot += o.tot; T.sum += dup ? o.dupSum : o.uniSum;
+    for (let m = 1; m <= 12; m++) T.mo[m] += dup ? o.dup[m] : o.uni[m];
+  }
+  const cols = [['name', '行政區']].concat(
+    Array.from({ length: 12 }, (_, i) => ['m' + (i + 1), (i + 1) + '月']),
+    [['sum', '總計'], ['tot', '總長度'], ['rate', dup ? '延長率' : '巡檢率']]);
+  const ar = k => S.tblKey === k ? `<span class="ar">${S.tblDir < 0 ? '▼' : '▲'}</span>` : '';
+  const cell = v => v > 0.5
+    ? `<td>${(v / 1000).toFixed(2)}</td>` : `<td class="z">·</td>`;
+
+  $('p3').innerHTML = `
+    <div class="tblBar">
+      <div class="sw">
+        <button data-d="0" aria-pressed="${!dup}">不重複</button>
+        <button data-d="1" aria-pressed="${!!dup}">含重複</button>
+      </div>
+      <span style="font-size:11px;color:var(--dim2)">單位：公里・點欄名排序</span>
+    </div>
+    <div class="tblWrap"><table class="stat">
+      <thead><tr>${cols.map((c, i) =>
+        `<th class="${i ? '' : 'c0'}" data-k="${c[0]}">${c[1]}${ar(c[0])}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(o => `<tr class="${S.f.dists.has(o.d) ? 'sel' : ''}" data-i="${o.d}">
+        <td class="c0">${o.name}</td>
+        ${Array.from({ length: 12 }, (_, i) => cell(dup ? o.dup[i + 1] : o.uni[i + 1])).join('')}
+        <td class="hi">${((dup ? o.dupSum : o.uniSum) / 1000).toFixed(2)}</td>
+        <td>${(o.tot / 1000).toFixed(2)}</td>
+        <td>${o.tot ? ((dup ? o.dupSum : o.uniSum) / o.tot * 100).toFixed(1) + '%' : '—'}</td>
+      </tr>`).join('')}</tbody>
+      <tfoot><tr><td class="c0">全市合計</td>
+        ${Array.from({ length: 12 }, (_, i) => T.mo[i + 1] > 0.5
+          ? `<td>${(T.mo[i + 1] / 1000).toFixed(2)}</td>` : '<td class="z">·</td>').join('')}
+        <td class="hi">${(T.sum / 1000).toFixed(2)}</td><td>${(T.tot / 1000).toFixed(2)}</td>
+        <td>${T.tot ? (T.sum / T.tot * 100).toFixed(1) + '%' : '—'}</td></tr></tfoot>
+    </table></div>
+    <div class="tblNote">${dup
+      ? '含重複：同一管段若在多個月份被巡檢，各月皆計入，反映實際投入的工作量。延長率可能超過 100%，不等於覆蓋率。'
+      : '不重複：同一管段只計算一次，以首次巡檢月份歸屬，總計即為實際巡檢覆蓋長度。'}
+      　點行政區列可在地圖定位。</div>`;
+
+  $('p3').querySelectorAll('.tblBar .sw button').forEach(b =>
+    b.onclick = () => { S.tblDup = +b.dataset.d; drawP3(); });
+  $('p3').querySelectorAll('thead th').forEach(th => th.onclick = () => {
+    const k = th.dataset.k;
+    if (S.tblKey === k) S.tblDir = -S.tblDir;
+    else { S.tblKey = k; S.tblDir = k === 'name' ? 1 : -1; }
+    drawP3();
+  });
+  $('p3').querySelectorAll('tbody tr').forEach(tr =>
+    tr.onclick = () => pickDist(+tr.dataset.i));
+}
+
 const refresh = () => {
   render();                       // 先算出 VIS
   AGG = agg(VIS);
-  drawBoundary(); drawTime(); drawPeek(); drawP0(); drawP1(); drawP2();
+  drawBoundary(); drawTime(); drawPeek(); drawP0(); drawP1(); drawP2(); drawP3();
   legend(); drawInfo();
 };
 /* 播放時只更新必要部分，維持流暢 */
@@ -989,7 +1083,7 @@ function initOnce() {
   $('btnPlay').onclick = play;
   document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => {
     document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
-    [0, 1, 2].forEach(i => $('p' + i).hidden = (+b.dataset.t !== i));
+    [0, 1, 2, 3].forEach(i => $('p' + i).hidden = (+b.dataset.t !== i));
     if (S.snapIdx === 0) snap(1);
   });
   $('btnGap').onclick = () => {
@@ -1066,21 +1160,22 @@ function initOnce() {
 }
 
 function buildMH() {
-  // 人孔點位由管網單元推得（受檢端點），避免另外傳輸圖層
-  const seen = new Map();
+  // 用管網檔內的人孔真實座標，而不是受檢單元的端點
+  const info = new Map();                      // 區|編號 → {cnt, listed}
   for (const s of SEG) {
     if (!s.node) continue;
     const k = s.dist + '|' + s.node;
-    if (!seen.has(k)) seen.set(k, s);
+    if (!info.has(k)) info.set(k, { cnt: s.cnt, st: s.st });
   }
   const rr = L.canvas({ padding: 0.3 });
-  for (const [k, s] of seen) {
-    const st = s.cnt > 0 ? 0 : (s.st === 4 ? 2 : 1);
-    const p = s.ll[0];
-    L.circleMarker(p, { renderer: rr, radius: 4, weight: 1.2, color: '#0B161F',
+  const src = NET.manholes || [];
+  for (const [di, num, lon, lat] of src) {
+    const o = info.get(di + '|' + num);
+    const st = !o ? 2 : (o.cnt > 0 ? 0 : (o.st === 4 ? 2 : 1));
+    L.circleMarker([lat, lon], { renderer: rr, radius: 4, weight: 1.2, color: '#0B161F',
       fillColor: C.mh[st], fillOpacity: 0.95 })
-      .bindTooltip(`${NET.dists[s.dist]} ${s.node}｜${['已開孔', '未開孔', '未列管'][st]}`
-        + (s.cnt ? `（${s.cnt} 次）` : ''), { direction: 'top' })
+      .bindTooltip(`${NET.dists[di]} ${num}｜${['已開孔', '未開孔', '未列管'][st]}`
+        + (o && o.cnt ? `（${o.cnt} 次）` : ''), { direction: 'top' })
       .addTo(mhLayer);
   }
 }

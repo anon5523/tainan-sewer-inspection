@@ -23,7 +23,7 @@
 若某一側沒有人孔（管線末端，或分岔於無人孔的轉折點），該側整段計入。
 兩端皆無可開孔人孔者永遠無法巡檢。所有受檢單元長度總和 == 管線圖資總長。
 """
-import argparse, json, math, re, sys
+import argparse, heapq, json, math, re, sys
 from collections import defaultdict, Counter
 from pathlib import Path
 
@@ -146,96 +146,116 @@ def build_network(spec):
     for p in pipes:
         deg[p['u']] += 1; deg[p['d']] += 1
     ncls = {k: ('REAL' if mh[k]['real'] else 'VIRT') if k in mh else 'UNKNOWN' for k in deg}
-    passthru = {k for k, c in ncls.items() if c == 'VIRT' and deg[k] == 2}
-    log(f'   節點 {len(ncls):,}（{dict(Counter(ncls.values()))}）'
-        f'／可穿越轉折點 {len(passthru):,}')
+    log(f'   節點 {len(ncls):,}（{dict(Counter(ncls.values()))}）')
 
-    # 鏈結合併
+    # ── 網路最近人孔分配 ──────────────────────────────────────────
+    # 管線上的每一點，歸屬於「沿管線走最近的那座實人孔」。
+    # 兩座人孔直接相連時分界點落在中點（即各一半）；一端無人孔時整段歸另一端；
+    # 遇到分岔則自然依網路距離分界，不會把整段誤判給遠處的人孔。
     adj = defaultdict(list)
     for i, p in enumerate(pipes):
-        adj[p['u']].append((i, p['d'])); adj[p['d']].append((i, p['u']))
-    used = [False] * len(pipes)
+        adj[p['u']].append((p['d'], p['len'], i))
+        adj[p['d']].append((p['u'], p['len'], i))
 
-    def walk(start, pid):
-        chain, cur = [], start
-        while True:
-            used[pid] = True
-            chain.append((pid, cur))
-            p = pipes[pid]
-            nxt = p['d'] if p['u'] == cur else p['u']
-            if nxt not in passthru:
-                return chain, nxt
-            cand = [(i, o) for i, o in adj[nxt] if i != pid and not used[i]]
-            if not cand:
-                return chain, nxt
-            pid, cur = cand[0][0], nxt
+    INF = float('inf')
+    dist_to = {}; owner = {}
+    heap = []
+    for k, c in ncls.items():
+        if c == 'REAL':
+            dist_to[k] = 0.0; owner[k] = k
+            heapq.heappush(heap, (0.0, k))
+    while heap:
+        d, u = heapq.heappop(heap)
+        if d > dist_to.get(u, INF) + 1e-9:
+            continue
+        for v, w, _ in adj[u]:
+            nd = d + w
+            if nd < dist_to.get(v, INF) - 1e-9:
+                dist_to[v] = nd; owner[v] = owner[u]
+                heapq.heappush(heap, (nd, v))
+    reach = sum(1 for k in ncls if k in owner)
+    log(f'   可達實人孔的節點 {reach:,}／{len(ncls):,}')
 
-    logical = []
-    for t in [k for k in deg if k not in passthru]:
-        for pid, _ in adj[t]:
-            if not used[pid]:
-                ch, e = walk(t, pid); logical.append((t, e, ch))
-    for pid in range(len(pipes)):
-        if not used[pid]:
-            ch, e = walk(pipes[pid]['u'], pid); logical.append((pipes[pid]['u'], e, ch))
-    log(f'   邏輯管段 {len(logical):,} 段')
+    # 無法連到任何實人孔的連通分量：永遠無法以開孔巡檢
+    seen, comp_has_unknown = set(), {}
+    for k in ncls:
+        if k in owner or k in seen:
+            continue
+        stack, comp = [k], []
+        seen.add(k)
+        while stack:
+            x = stack.pop(); comp.append(x)
+            for y, _, _ in adj[x]:
+                if y not in seen:
+                    seen.add(y); stack.append(y)
+        flag = 2 if any(ncls.get(x) == 'UNKNOWN' for x in comp) else 1
+        for x in comp:
+            comp_has_unknown[x] = flag
 
-    def stitch(chain):
-        out = []
-        for pid, frm in chain:
-            p = pipes[pid]
-            q = p['pts'] if p['u'] == frm else p['pts'][::-1]
-            out.extend(q if not out else q[1:])
-        return out
-
-    # 切成受檢單元
+    # ── 切成受檢單元 ─────────────────────────────────────────────
     dists = sorted({p['dist'] for p in pipes})
     DI = {d: i for i, d in enumerate(dists)}
     U = {'d': [], 'len': [], 'node': [], 'nodeDist': [], 'pinum': [], 'blocked': [], 'geom': []}
 
-    def is_real(k):
-        return ncls.get(k) == 'REAL'
+    def emit(dist, length, node, pinum, blocked, pts):
+        pts = drop_collinear(pts)
+        xs, ys = zip(*pts)
+        lon, lat = TO_WGS.transform(np.array(xs), np.array(ys))
+        U['d'].append(DI[dist])
+        U['len'].append(round(length, 2))
+        U['node'].append(node[1] if node else '')
+        U['nodeDist'].append(DI.get(node[0], -1) if node else -1)
+        U['pinum'].append(pinum)
+        U['blocked'].append(blocked)
+        U['geom'].append([[round(float(a), 6), round(float(b), 6)] for a, b in zip(lon, lat)])
 
-    for A, B, chain in logical:
-        pts = stitch(chain)
-        L = seglen(pts)
-        if L <= 0:
+    n_split = 0
+    for p in pipes:
+        u, v, w, pts = p['u'], p['d'], p['len'], p['pts']
+        ou, ov = owner.get(u), owner.get(v)
+        if ou is None and ov is None:
+            emit(p['dist'], w, None, p['pinum'], comp_has_unknown.get(u, 1), pts)
             continue
-        dist = pipes[chain[0][0]]['dist']
-        pinum = '、'.join(dict.fromkeys(pipes[p]['pinum'] for p, _ in chain))[:70]
-        rA, rB = is_real(A), is_real(B)
-        if rA and rB and A != B:
-            parts = [(A, 0.0, 0.5), (B, 0.5, 1.0)]
-        elif rA:
-            parts = [(A, 0.0, 1.0)]
-        elif rB:
-            parts = [(B, 0.0, 1.0)]
+        if ou is None or ov is None:          # 理論上不會發生，保險處理
+            o = ou or ov
+            emit(p['dist'], w, o, p['pinum'], 0, pts)
+            continue
+        if ou == ov:
+            emit(p['dist'], w, ou, p['pinum'], 0, pts)
+            continue
+        # 分界點：距 u 為 x 處滿足 dist[u]+x == dist[v]+(w-x)
+        x = (w + dist_to[v] - dist_to[u]) / 2.0
+        if x <= 0.01:
+            emit(p['dist'], w, ov, p['pinum'], 0, pts)
+        elif x >= w - 0.01:
+            emit(p['dist'], w, ou, p['pinum'], 0, pts)
         else:
-            blocked = 2 if 'UNKNOWN' in (ncls.get(A), ncls.get(B)) else 1
-            parts = [(None, 0.0, 1.0)]
-        for node, fa, fb in parts:
-            g = pts if (fa, fb) == (0.0, 1.0) else substr(pts, fa, fb)
-            g = drop_collinear(g)
-            xs, ys = zip(*g)
-            lon, lat = TO_WGS.transform(np.array(xs), np.array(ys))
-            U['d'].append(DI[dist])
-            U['len'].append(round(L * (fb - fa), 2))
-            U['node'].append(node[1] if node else '')
-            U['nodeDist'].append(DI.get(node[0], -1) if node else -1)
-            U['pinum'].append(pinum)
-            U['blocked'].append(0 if node else (2 if 'UNKNOWN' in (ncls.get(A), ncls.get(B)) else 1))
-            U['geom'].append([[round(float(a), 6), round(float(b), 6)]
-                              for a, b in zip(lon, lat)])
+            f = x / w
+            emit(p['dist'], x, ou, p['pinum'], 0, substr(pts, 0.0, f))
+            emit(p['dist'], w - x, ov, p['pinum'], 0, substr(pts, f, 1.0))
+            n_split += 1
 
     got = sum(U['len'])
-    log(f'   受檢單元 {len(U["len"]):,} 筆／長度守恆誤差 {abs(got-TOT)*1000:.1f} mm')
+    log(f'   受檢單元 {len(U["len"]):,} 筆（其中 {n_split:,} 條管線被分界點切開）')
+    log(f'   長度守恆誤差 {abs(got-TOT)*1000:.1f} mm')
     if abs(got - TOT) > 5.0:
         log('   ⚠ 長度守恆誤差過大，請檢查圖資')
 
+    # 實人孔座標（供地圖標示真實位置）
+    mhpts = []
+    for k, c in ncls.items():
+        if c != 'REAL':
+            continue
+        i = mkey.index(k) if k in mkey else -1
+        if i < 0:
+            continue
+        lon, lat = TO_WGS.transform(mxy[i][0], mxy[i][1])
+        mhpts.append([DI.get(k[0], -1), k[1], round(float(lon), 6), round(float(lat), 6)])
+
     out = {'id': nid, 'label': spec.get('label', nid), 'dists': dists,
-           'totalLengthKm': round(TOT / 1000, 3), 'units': U,
-           'stats': {'pipes': len(pipes), 'manholes': len(mh), 'logical': len(logical),
-                     'snapped': nsnap, 'passthrough': len(passthru)}}
+           'totalLengthKm': round(TOT / 1000, 3), 'units': U, 'manholes': mhpts,
+           'stats': {'pipes': len(pipes), 'manholes': len(mh), 'split': n_split,
+                     'snapped': nsnap, 'realNodes': sum(1 for c in ncls.values() if c == 'REAL')}}
     return out, {'mh': mh, 'dists': dists, 'DI': DI}
 
 
